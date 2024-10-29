@@ -1,7 +1,6 @@
 import json
 import datetime
 import os
-import glob
 import time
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
