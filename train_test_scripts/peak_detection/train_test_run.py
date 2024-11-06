@@ -7,19 +7,22 @@ import os
 import glob
 import torch
 
-RUN_MODE = 'train_and_test'  # Options: 'train', 'test', 'train_and_test'
+RUN_MODE = 'test'  # Options: 'train', 'test', 'train_and_test'
 # if RUN_MODE == 'test', define the checkpoints directory of the model
 CHECKPOINTS_DIRECTORY = os.path.join(RESULTS_PEAK_DETECTION, 'checkpoints',
                                      'GRUseq2seq_64hid_3l_lr0.001_drop0.3_dt2024-10-18_18-01-26')
+ALL_SAMPLES_TEST = False
+SAMPLES_TEST = 3
 
 # Default hyperparameters
 N_FEATURES = 1
 HID_DIM = 64
 N_LAYERS = 3
+BIDIRECTIONAL = True
 DROPOUT = 0.3
 EPOCHS = 80
 LEARNING_RATE = 0.001
-BATCH_SIZE = 64
+BATCH_SIZE = 64  # for training (for testing it is always 1)
 GPU_ID = 0
 TASK = 'classification'
 NUM_CLASSES = 1
@@ -38,10 +41,9 @@ def train(hid_dim=HID_DIM, n_layers=N_LAYERS, dropout=DROPOUT,
         n_layers=n_layers,
         dropout=dropout,
         learning_rate=learning_rate,
-        bidirectional=True,
+        bidirectional=BIDIRECTIONAL,
         task=TASK,
         num_classes=NUM_CLASSES,
-        batch_size=batch_size,
         gpu_id=gpu_id,
         results_directory=results_directory
     )
@@ -51,6 +53,7 @@ def train(hid_dim=HID_DIM, n_layers=N_LAYERS, dropout=DROPOUT,
         path_x=gib.X,
         path_y=gib.Y_BIN,
         all_samples=True,
+        batch_size=BATCH_SIZE,
         epochs=epochs,
         patience=patience,
         dataset_name='gib01',
@@ -75,7 +78,8 @@ def test(checkpoints_dir, threshold=THRESHOLD, results_directory=RESULTS_PEAK_DE
         n_layers=N_LAYERS,
         dropout=DROPOUT,
         threshold=threshold,
-        all_samples=True
+        all_samples=ALL_SAMPLES_TEST,
+        samples=SAMPLES_TEST
     )
     print(f"Testing completed using checkpoint from {checkpoints_dir}")
 

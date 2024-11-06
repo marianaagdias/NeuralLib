@@ -24,7 +24,7 @@ class BaseModel(pl.LightningModule):
 
     def create_checkpoints(self):
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        arch_string = f"{self.hid_dim}hid_{self.n_layers}l_lr{self.learning_rate}_drop{self.dropout}"
+        arch_string = f"{self.hid_dim}hid_{self.n_layers}l_bidir{self.bidirectional}_lr{self.learning_rate}_drop{self.dropout}"
         dir_name = f"{self.model_name}_{arch_string}_dt{timestamp}"
         checkpoints_directory = os.path.join(self.results_directory, 'checkpoints', dir_name)
         os.makedirs(checkpoints_directory, exist_ok=True)
@@ -53,7 +53,7 @@ class BaseModel(pl.LightningModule):
             with open(training_info_file, 'w') as f:
                 json.dump(training_info, f, indent=4)
 
-    def train_model(self, path_x, path_y, patience, epochs, all_samples=False, samples=None, dataset_name=None,
+    def train_model(self, path_x, path_y, patience, batch_size, epochs, all_samples=False, samples=None, dataset_name=None,
                     trained_for=None, classification=False, enable_tensorboard=False):
 
         # Configure seed and device
@@ -84,8 +84,8 @@ class BaseModel(pl.LightningModule):
                                         samples=samples)
         val_dataset = DatasetSequence(path_x=path_x, path_y=path_y, part='val', all_samples=all_samples,
                                       samples=samples)
-        train_dataloader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False, collate_fn=collate_fn)
-        val_dataloader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, collate_fn=collate_fn)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+        val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
 
         # Calculate class weights based on the training dataset -- only for classification problems
         # if classification:

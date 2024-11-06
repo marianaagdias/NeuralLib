@@ -7,7 +7,7 @@ from BaseModel import BaseModel
 # Sequence to sequence (direct correspondence between input and output) module
 # A very similar one can be implemented with LSTM layers instead of GRU
 class GRUseq2seq(BaseModel):
-    def __init__(self, n_features, hid_dim, n_layers, dropout, learning_rate, batch_size, results_directory,
+    def __init__(self, n_features, hid_dim, n_layers, dropout, learning_rate, results_directory,
                  gpu_id=None, bidirectional=False, task='classification', num_classes=1, checkpoints_directory=None):
         super(GRUseq2seq, self).__init__(model_name="GRUseq2seq", checkpoints_directory=checkpoints_directory)
         self.n_features = n_features
@@ -15,7 +15,6 @@ class GRUseq2seq(BaseModel):
         self.n_layers = n_layers
         self.dropout = dropout
         self.learning_rate = learning_rate
-        self.batch_size = batch_size
         self.results_directory = results_directory
         self.gpu_id = gpu_id
         self.bidirectional = bidirectional
