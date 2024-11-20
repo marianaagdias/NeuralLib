@@ -5,7 +5,6 @@ from BaseModel import BaseModel
 
 
 # Sequence to sequence (direct correspondence between input and output) module
-# A very similar one can be implemented with LSTM layers instead of GRU
 class GRUseq2seq(BaseModel):
     def __init__(self, n_features, hid_dim, n_layers, dropout, learning_rate, results_directory,
                  gpu_id=None, bidirectional=False, task='classification', num_classes=1, checkpoints_directory=None):
@@ -147,21 +146,7 @@ class GRUseq2one(BaseModel):
 class GRUEncoderDecoder(BaseModel):
     def __init__(self, n_features, enc_hid_dim, dec_hid_dim, enc_layers, dec_layers, dropout, learning_rate,
                  batch_size, results_directory, gpu_id=None, bidirectional=False, checkpoints_directory=None):
-        """
-        GRU Encoder-Decoder model for sequence-to-sequence regression tasks.
 
-        :param n_features: Number of input features per time step.
-        :param enc_hid_dim: Hidden dimension for the encoder.
-        :param dec_hid_dim: Hidden dimension for the decoder.
-        :param enc_layers: Number of layers in the encoder.
-        :param dec_layers: Number of layers in the decoder.
-        :param dropout: Dropout value.
-        :param learning_rate: Learning rate for the optimizer.
-        :param batch_size: Batch size.
-        :param results_directory: Directory to save the results.
-        :param gpu_id: GPU ID for training, if available.
-        :param bidirectional: Whether the encoder is bidirectional.
-        """
         super(GRUEncoderDecoder, self).__init__(model_name="GRUEncoderDecoder",
                                                 checkpoints_directory=checkpoints_directory)
         self.n_features = n_features
