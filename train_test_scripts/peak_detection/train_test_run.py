@@ -1,7 +1,7 @@
 import data_preprocessing.gib01 as gib
 from config import RESULTS_PEAK_DETECTION
-import BaseModel.model_architectures as bm
-from utils.test_models import test_peak_detection_test_set
+import BaseModel as bm
+from utils import test_peak_detection_test_set
 import time
 import os
 import glob
