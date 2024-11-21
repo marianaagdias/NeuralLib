@@ -1,10 +1,10 @@
 import os
 import torch
 from torch.utils.data import DataLoader
-from BaseModel.model_architectures import GRUseq2seq
+from BaseModel import GRUseq2seq
 from utils import DatasetSequence, save_predictions_with_filename
 import numpy as np
-import BaseModel.model_architectures as bm
+import BaseModel as bm
 from config import RESULTS_PEAK_DETECTION
 import glob
 
@@ -101,12 +101,21 @@ def test_peak_detection_test_set(model_checkpoint, path_x, path_y, n_features, h
     print(f"Predictions saved at: {predictions_dir}")
 
 
+# AFINAL NAO FAZ SENTIDO TER ISTO AQUI! ISTO DEVE SER APENAS PARA O MÓDULO - OS MODULOS, POR DEFINIÇÃO, É QUE SAO USADOS
 # Run peak detection model on a single signal - testar
-def peak_detection(signal, checkpoints_dir=os.path.join(RESULTS_PEAK_DETECTION, 'checkpoints',
+def peak_detection(sig, checkpoints_dir=os.path.join(RESULTS_PEAK_DETECTION, 'checkpoints',
                                                         'GRUseq2seq_64hid_3l_lr0.001_drop0.3_dt2024-10-18_18-01-26'),
                    threshold=0.5, min_distance=40):
+    """
+    :param sig: ecg signal (tensor of shape [seq_len])
+    :param checkpoints_dir:
+    :param threshold: threshold for the probability above which a signal sample should be classified as "peak"
+    :param min_distance: minimum distance (in samples) between 2 consecutive peaks.
+    :return: detected peaks
+    """
+
     # Load model and checkpoint
-    ckpt_file = glob.glob(os.path.join(checkpoints_dir, '*.ckpt'))[0]
+    ckpt_file = glob.glob(os.path.join(checkpoints_dir, r'*.ckpt'))[0]
     model = bm.GRUseq2seq.load_from_checkpoint(
         ckpt_file,
         n_features=1,
@@ -119,8 +128,11 @@ def peak_detection(signal, checkpoints_dir=os.path.join(RESULTS_PEAK_DETECTION, 
     model.eval()
     model.to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 
-    signal = torch.tensor(signal).float().unsqueeze(0)  # Add batch dimension
+    signal = sig.clone().detach()
+    signal = signal.view(1, -1, 1)  # Add batch dimension: from torch.Size([7560]) to torch.Size([1, 7560, 1])
+    # print(signal.shape)  # torch.Size([1, 7560, 1])
     lengths = [signal.size(1)]
+
 
     # Run inference
     with torch.no_grad():
@@ -130,13 +142,11 @@ def peak_detection(signal, checkpoints_dir=os.path.join(RESULTS_PEAK_DETECTION, 
         all_peak_indices = torch.nonzero(output_binary).squeeze().cpu().numpy()
 
         # Ensure all_peak_indices is a 1D array or handle empty cases
-        if all_peak_indices.numel() == 0:  # No peaks found
+        if all_peak_indices.size == 0:  # No peaks found
             filtered_peak_indices = np.array([])  # Empty array
-            # print(filtered_peak_indices)
+            print("No peaks were detected.")
         else:
-            all_peak_indices = all_peak_indices.view(-1).cpu().numpy()  # Convert to numpy if non-empty
-            # print(all_peak_indices)
-
+            print(f"{all_peak_indices.size} peaks were detected. Proceeding to remove extra peaks, if existing.")
             # Remove extra peaks
             if len(all_peak_indices) > 1:
                 peak_differences = np.diff(all_peak_indices)  # Calculate differences between consecutive peaks
@@ -165,5 +175,17 @@ def peak_detection(signal, checkpoints_dir=os.path.join(RESULTS_PEAK_DETECTION, 
             else:
                 filtered_peak_indices = all_peak_indices
 
-    print(f"Peak indices for the provided signal: {filtered_peak_indices}")
+    print(f"{filtered_peak_indices.size} peaks found. Peak indices for the provided signal: {filtered_peak_indices}")
     return filtered_peak_indices
+
+
+ecg_signal = np.load(r'C:\Users\Catia Bastos\dev\data\gib01_ecg\datasets\x\test\subject6_session10_segment2.npy')
+signal = torch.tensor(ecg_signal).float()
+
+filtered_peak_indices = peak_detection(signal)
+
+import matplotlib.pyplot as plt
+plt.figure()
+plt.plot(ecg_signal.squeeze())
+plt.plot(list(filtered_peak_indices), ecg_signal.squeeze()[list(filtered_peak_indices)], 'o')
+plt.show()
