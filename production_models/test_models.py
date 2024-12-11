@@ -1,10 +1,10 @@
 import os
 import torch
 from torch.utils.data import DataLoader
-from BaseModel import GRUseq2seq
+from architectures import GRUseq2seq
 from utils import DatasetSequence, save_predictions_with_filename
 import numpy as np
-import BaseModel as bm
+import architectures as archi
 from config import RESULTS_PEAK_DETECTION
 import glob
 
@@ -116,7 +116,7 @@ def peak_detection(sig, checkpoints_dir=os.path.join(RESULTS_PEAK_DETECTION, 'ch
 
     # Load model and checkpoint
     ckpt_file = glob.glob(os.path.join(checkpoints_dir, r'*.ckpt'))[0]
-    model = bm.GRUseq2seq.load_from_checkpoint(
+    model = archi.GRUseq2seq.load_from_checkpoint(
         ckpt_file,
         n_features=1,
         hid_dim=64,

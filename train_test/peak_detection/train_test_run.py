@@ -1,7 +1,7 @@
 import data_preprocessing.gib01 as gib
 from config import RESULTS_PEAK_DETECTION
-import BaseModel as bm
-from utils import test_peak_detection_test_set
+import architectures as a
+from production_models.test_models import test_peak_detection_test_set
 import time
 import os
 import glob
@@ -31,11 +31,11 @@ THRESHOLD = 0.5
 
 
 # 1. Train Model
-def train(hid_dim=HID_DIM, n_layers=N_LAYERS, dropout=DROPOUT,
+def train(architecture=a.GRUseq2seq, hid_dim=HID_DIM, n_layers=N_LAYERS, dropout=DROPOUT,
           learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE,
           gpu_id=GPU_ID, epochs=EPOCHS, patience=PATIENCE,
           enable_tensorboard=True, results_directory=RESULTS_PEAK_DETECTION):
-    model = bm.GRUseq2seq(
+    model = architecture(
         n_features=N_FEATURES,
         hid_dim=hid_dim,
         n_layers=n_layers,
@@ -43,9 +43,7 @@ def train(hid_dim=HID_DIM, n_layers=N_LAYERS, dropout=DROPOUT,
         learning_rate=learning_rate,
         bidirectional=BIDIRECTIONAL,
         task=TASK,
-        num_classes=NUM_CLASSES,
-        gpu_id=gpu_id,
-        results_directory=results_directory
+        num_classes=NUM_CLASSES
     )
 
     start_time = time.time()
@@ -53,12 +51,14 @@ def train(hid_dim=HID_DIM, n_layers=N_LAYERS, dropout=DROPOUT,
         path_x=gib.X,
         path_y=gib.Y_BIN,
         all_samples=True,
-        batch_size=BATCH_SIZE,
+        batch_size=batch_size,
         epochs=epochs,
         patience=patience,
         dataset_name='gib01',
         trained_for='peak detection',
-        enable_tensorboard=enable_tensorboard
+        enable_tensorboard=enable_tensorboard,
+        gpu_id=gpu_id,
+        results_directory=results_directory
     )
 
     print(f"Training completed in {(time.time() - start_time) / 60:.2f} minutes.")
@@ -94,7 +94,7 @@ def train_and_test(**kwargs):
 def run_on_single_signal(checkpoints_dir, signal, threshold=THRESHOLD):
     # Load model and checkpoint
     ckpt_file = glob.glob(os.path.join(checkpoints_dir, '*.ckpt'))[0]
-    model = bm.GRUseq2seq.load_from_checkpoint(
+    model = a.GRUseq2seq.load_from_checkpoint(
         ckpt_file,
         n_features=N_FEATURES,
         hid_dim=HID_DIM,

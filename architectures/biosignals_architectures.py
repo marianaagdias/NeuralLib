@@ -1,25 +1,23 @@
 import torch
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-from BaseModel import BaseModel
+from architectures import Architecture
 
 
 # Sequence to sequence (direct correspondence between input and output) module
-class GRUseq2seq(BaseModel):
-    def __init__(self, n_features, hid_dim, n_layers, dropout, learning_rate, results_directory,
-                 gpu_id=None, bidirectional=False, task='classification', num_classes=1, checkpoints_directory=None):
-        super(GRUseq2seq, self).__init__(model_name="GRUseq2seq", checkpoints_directory=checkpoints_directory)
+# todo: choose only one of the (customizable or non-customizable) options for GRUseq2seq
+class GRUseq2seq__(Architecture):
+    def __init__(self, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,
+                 task='classification', num_classes=1):
+        super(GRUseq2seq__, self).__init__(model_name="GRUseq2seq__")
         self.n_features = n_features
         self.hid_dim = hid_dim
         self.n_layers = n_layers
         self.dropout = dropout
         self.learning_rate = learning_rate
-        self.results_directory = results_directory
-        self.gpu_id = gpu_id
         self.bidirectional = bidirectional
         self.task = task  # classification or regression
         self.num_classes = num_classes  # only used if the task is classification. if it is a binary classification: 1
-        self.checkpoints_directory = checkpoints_directory
 
         self.gru = nn.GRU(input_size=n_features, hidden_size=hid_dim, num_layers=n_layers,
                           bidirectional=bidirectional, batch_first=True, dropout=dropout)
@@ -75,18 +73,104 @@ class GRUseq2seq(BaseModel):
         return [optimizer], [scheduler] if scheduler else [optimizer]
 
 
-class GRUseq2one(BaseModel):
-    def __init__(self, n_features, hid_dim, n_layers, dropout, learning_rate, batch_size, results_directory,
-                 gpu_id=None, bidirectional=False, task='classification', num_classes=1, checkpoints_directory=None):
-        super(GRUseq2one, self).__init__(model_name="GRUseq2one", checkpoints_directory=checkpoints_directory)
+class GRUseq2seq(Architecture):
+    def __init__(self, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,
+                 task='classification', num_classes=1):
+        super(GRUseq2seq, self).__init__(model_name="GRUseq2seq")
+        self.n_features = n_features
+        self.hid_dim = hid_dim if isinstance(hid_dim, list) else [hid_dim] * n_layers
+        self.n_layers = n_layers
+        self.dropout = dropout if isinstance(dropout, list) else [dropout] * n_layers
+        self.learning_rate = learning_rate
+        self.bidirectional = bidirectional
+        self.task = task  # classification or regression
+        self.num_classes = num_classes  # only used if the task is classification. if it is a binary classification: 1
+
+        # Ensure hid_dim matches n_layers
+        if len(self.hid_dim) != n_layers:
+            raise ValueError(f"The length of hid_dim ({len(self.hid_dim)}) must match n_layers ({n_layers}).")
+        if len(self.dropout) != n_layers:
+            raise ValueError(f"The length of dropout ({len(self.dropout)}) must match n_layers ({n_layers}).")
+
+        # Dynamically create GRU layers
+        self.gru_layers = nn.ModuleList()
+        self.dropout_layers = nn.ModuleList()  # Separate dropout for intermediate layers
+        input_dim = n_features
+        for i in range(n_layers):
+            self.gru_layers.append(
+                nn.GRU(input_size=input_dim,
+                       hidden_size=self.hid_dim[i],
+                       bidirectional=bidirectional,
+                       batch_first=True)
+            )
+            self.dropout_layers.append(nn.Dropout(p=self.dropout[i]))
+            input_dim = self.hid_dim[i] * (2 if bidirectional else 1)  # Adjust input_dim for bidirectional GRU
+
+        # Fully connected output layer
+        self.fc_out = nn.Linear(input_dim, num_classes if task == 'classification' else n_features)
+
+        # Set loss function based on task_type
+        if task == 'classification':
+            self.criterion = nn.CrossEntropyLoss() if num_classes > 1 else nn.BCEWithLogitsLoss()
+        else:
+            self.criterion = nn.MSELoss()
+
+        self.save_hyperparameters(ignore=["criterion"])
+
+    def forward(self, x, lengths):
+        # Pack the padded sequence (expects inputs in shape [batch_size, seq_len, input_size])
+        packed_x = pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
+
+        # Pass through GRU layers with dropout applied conditionally
+        for i, gru in enumerate(self.gru_layers):
+            packed_x, _ = gru(packed_x)  # Pass through the GRU layer
+            output, _ = pad_packed_sequence(packed_x, batch_first=True)  # Unpack the output
+
+            # Apply dropout only if defined for this layer
+            if self.dropout[i] > 0:
+                output = self.dropout_layers[i](output)
+
+            # Repack the sequence if it's not the last layer
+            if i < self.n_layers - 1:
+                packed_x = pack_padded_sequence(output, lengths, batch_first=True, enforce_sorted=False)
+
+        # Unpack to apply the fully connected
+        output, _ = pad_packed_sequence(packed_x, batch_first=True)
+
+        # FC
+        output = self.fc_out(output)
+
+        return output
+
+    def training_step(self, batch, batch_idx):
+        X, Y, lengths = batch
+        output = self(X, lengths)
+        loss = self.criterion(output, Y)
+        self.log('train_loss', loss, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        X, Y, lengths = batch
+        output = self(X, lengths)
+        loss = self.criterion(output, Y)
+        self.log('val_loss', loss, prog_bar=True)
+        return loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=1e-5)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+        return [optimizer], [scheduler] if scheduler else [optimizer]
+
+
+class GRUseq2one(Architecture):
+    def __init__(self, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,
+                 task='classification', num_classes=1):
+        super(GRUseq2one, self).__init__(model_name="GRUseq2one")
         self.n_features = n_features
         self.hid_dim = hid_dim
         self.n_layers = n_layers
         self.dropout = dropout
         self.learning_rate = learning_rate
-        self.batch_size = batch_size
-        self.results_directory = results_directory
-        self.gpu_id = gpu_id
         self.bidirectional = bidirectional
         self.task = task  # classification or regression
         self.num_classes = num_classes  # only used if the task is classification.
@@ -143,12 +227,11 @@ class GRUseq2one(BaseModel):
         return optimizer
 
 
-class GRUEncoderDecoder(BaseModel):
+class GRUEncoderDecoder(Architecture):
     def __init__(self, n_features, enc_hid_dim, dec_hid_dim, enc_layers, dec_layers, dropout, learning_rate,
-                 batch_size, results_directory, gpu_id=None, bidirectional=False, checkpoints_directory=None):
+                 bidirectional=False):
 
-        super(GRUEncoderDecoder, self).__init__(model_name="GRUEncoderDecoder",
-                                                checkpoints_directory=checkpoints_directory)
+        super(GRUEncoderDecoder, self).__init__(model_name="GRUEncoderDecoder")
         self.n_features = n_features
         self.enc_hid_dim = enc_hid_dim
         self.dec_hid_dim = dec_hid_dim
@@ -156,9 +239,6 @@ class GRUEncoderDecoder(BaseModel):
         self.dec_layers = dec_layers
         self.dropout = dropout
         self.learning_rate = learning_rate
-        self.batch_size = batch_size
-        self.results_directory = results_directory
-        self.gpu_id = gpu_id
         self.bidirectional = bidirectional
         self.d = 2 if bidirectional else 1  # Double the hidden size if the encoder is bidirectional
 
@@ -242,11 +322,10 @@ class GRUEncoderDecoder(BaseModel):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=1e-5)
 
 
-class TransformerSeq2Seq(BaseModel):
+class TransformerSeq2Seq(Architecture):
     def __init__(self, n_features, d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward, dropout,
-                 learning_rate, batch_size, results_directory, checkpoints_directory=None):
-        super(TransformerSeq2Seq, self).__init__(model_name="TransformerSeq2Seq",
-                                                 checkpoints_directory=checkpoints_directory)
+                 learning_rate):
+        super(TransformerSeq2Seq, self).__init__(model_name="TransformerSeq2Seq")
         self.n_features = n_features
         self.d_model = d_model
         self.nhead = nhead
@@ -255,8 +334,6 @@ class TransformerSeq2Seq(BaseModel):
         self.dim_feedforward = dim_feedforward
         self.dropout = dropout
         self.learning_rate = learning_rate
-        self.batch_size = batch_size
-        self.results_directory = results_directory
 
         # Transformer encoder and decoder
         self.encoder_layer = nn.TransformerEncoderLayer(
@@ -312,11 +389,10 @@ class TransformerSeq2Seq(BaseModel):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
-class TransformerSeq2One(BaseModel):  # Encoder-only Transformer
+class TransformerSeq2One(Architecture):  # Encoder-only Transformer
     def __init__(self, n_features, d_model, nhead, num_encoder_layers, dim_feedforward, dropout, learning_rate,
-                 batch_size, results_directory, num_classes=1, checkpoints_directory=None):
-        super(TransformerSeq2One, self).__init__(model_name="TransformerSeq2One",
-                                                 checkpoints_directory=checkpoints_directory)
+                 num_classes=1):
+        super(TransformerSeq2One, self).__init__(model_name="TransformerSeq2One")
         self.n_features = n_features
         self.d_model = d_model
         self.nhead = nhead
@@ -324,8 +400,6 @@ class TransformerSeq2One(BaseModel):  # Encoder-only Transformer
         self.dim_feedforward = dim_feedforward
         self.dropout = dropout
         self.learning_rate = learning_rate
-        self.batch_size = batch_size
-        self.results_directory = results_directory
         self.num_classes = num_classes
 
         # Transformer encoder
@@ -376,11 +450,10 @@ class TransformerSeq2One(BaseModel):  # Encoder-only Transformer
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
-class TransformerEncoderDecoder(BaseModel):
+class TransformerEncoderDecoder(Architecture):
     def __init__(self, n_features, d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward, dropout,
-                 learning_rate, batch_size, results_directory, checkpoints_directory=None):
-        super(TransformerEncoderDecoder, self).__init__(model_name="TransformerEncoderDecoder",
-                                                        checkpoints_directory=checkpoints_directory)
+                 learning_rate):
+        super(TransformerEncoderDecoder, self).__init__(model_name="TransformerEncoderDecoder")
         self.n_features = n_features
         self.d_model = d_model
         self.nhead = nhead
@@ -389,8 +462,6 @@ class TransformerEncoderDecoder(BaseModel):
         self.dim_feedforward = dim_feedforward
         self.dropout = dropout
         self.learning_rate = learning_rate
-        self.batch_size = batch_size
-        self.results_directory = results_directory
 
         # Transformer encoder
         self.encoder_layer = nn.TransformerEncoderLayer(

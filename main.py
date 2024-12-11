@@ -1,16 +1,7 @@
-# This is a sample Python script.
+from architectures import BaseModel, GRUseq2seq, TransformerSeq2Seq
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+# Example usage
+model = GRUseq2seq(n_features=1, hid_dim=64, n_layers=3, dropout=0.3, learning_rate=0.001, results_directory='')
 
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    print(model)

@@ -4,7 +4,7 @@ import os
 Configuration file for setting up directories and paths used throughout the project.
 
 This version dynamically adjusts the directory structure based on the location of the 
-config file. It assumes the following structure relative to the `dev` folder:
+config file (which is inside `NeuralLib`). It assumes the following structure relative to the `dev` folder:
 - `dev` contains `NeuralLib` (the library), `data` (datasets), `results`, and `pretrained_models`.
 
 The paths adjust automatically based on the directory structure, avoiding the need for 

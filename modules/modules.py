@@ -1,10 +1,11 @@
 import torch
 import os
-import BaseModel as bm
+import architectures as bm
 from config import RESULTS_PEAK_DETECTION
 from Module_class import Module
 
 
+# TODO: FAZER UM MÉTODO QUE DEVOLVA A LISTA DE MÓDULOS DISPONÍVEIS
 class PeakDetectionGRU(Module):
     def __init__(self):
 

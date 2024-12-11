@@ -30,6 +30,16 @@ def configure_device(gpu_id=None):
         return 'cpu'
 
 
+def list_gpus():
+    """ List the names of available gpus. """
+    if torch.cuda.is_available():
+        num_gpus = torch.cuda.device_count()
+        for i in range(num_gpus):
+            print(f"GPU ID: {i}, Model: {torch.cuda.get_device_name(i)}")
+    else:
+        print("No GPU available.")
+
+
 # é preciso handle o facto de estarmos a ver ponto a ponto do sinal e nao idx a idx do dataset
 def calculate_class_weights(dataset):
     '''
@@ -94,8 +104,8 @@ def save_predictions_with_filename(predictions, input_filename, dir):
 
 def collate_fn(batch):
     # Separate inputs (X) and labels (Y)
-    X = [item[0] for item in batch]  # List of inputs (ECG signals)
-    Y = [item[1] for item in batch]  # List of labels (binary peak signals)
+    X = [item[0] for item in batch]  # List of inputs
+    Y = [item[1] for item in batch]  # List of labels
 
     # Sort by the length of X in descending order
     X_lengths = [len(x) for x in X]
