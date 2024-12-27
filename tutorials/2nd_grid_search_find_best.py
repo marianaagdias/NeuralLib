@@ -1,6 +1,6 @@
-import architectures as arc
-from config import RESULTS_PEAK_DETECTION
-from data_preprocessing.gib01 import X, Y_BIN
+import NeuralLib.architectures as arc
+from NeuralLib.config import RESULTS_PEAK_DETECTION
+from NeuralLib.data_preprocessing.gib01 import X, Y_BIN
 # from huggingface_hub import HfApi, HfFolder, snapshot_download, upload_folder
 
 # Step 1: Define architecture and training parameters
@@ -34,21 +34,6 @@ train_params = {
 
 # Step 2: Train the GRUseq2seq architecture from scratch
 print("Training GRUseq2seq architecture from scratch...")
-# checkpoints_dir, val_loss = arc.train_architecture_from_scratch(
-#     architecture_name,
-#     {
-#         "n_features": 1,
-#         "hid_dim": 16,
-#         "n_layers": 2,
-#         "dropout": 0.3,
-#         "learning_rate": 0.01,
-#         "bidirectional": True,
-#         "task": "classification",
-#         "num_classes": 1,
-#     },
-#     train_params
-# )
-# print(f"Initial training complete. Checkpoints directory: {checkpoints_dir}, Validation Loss: {val_loss:.4f}")
 
 # Step 3: Perform grid search with retraining
 print("Performing grid search with retraining...")
@@ -81,16 +66,4 @@ single_signal = torch.rand(100, 1)  # Example input signal (sequence length: 100
 single_prediction = model.test_on_single_signal(single_signal, checkpoints_dir=best_dir, gpu_id=train_params["gpu_id"])
 print(f"Single Signal Prediction: {single_prediction}")
 
-# Step 6: Upload the best model to Hugging Face Hub - remove this from here (IT IS AFTER MAKING THE PRODUCTION MODEL)
-# print("Uploading the best model to Hugging Face...")
-# repo_name = "best-gru-seq2seq-model"
-# api = HfApi()
-# user = api.whoami()["name"]
-# upload_folder(
-#     folder_path=best_dir,
-#     repo_id=f"{user}/{repo_name}",
-#     repo_type="model",
-#     use_auth_token=HfFolder.get_token(),
-# )
-# print(f"Model uploaded successfully to Hugging Face: https://huggingface.co/{user}/{repo_name}")
 

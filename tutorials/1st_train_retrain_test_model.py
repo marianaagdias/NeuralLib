@@ -1,6 +1,6 @@
-from architectures import GRUseq2seq
-from data_preprocessing.gib01 import X, Y_BIN
-from config import RESULTS_PEAK_DETECTION
+from NeuralLib.architectures import GRUseq2seq
+from NeuralLib.data_preprocessing.gib01 import X, Y_BIN
+from NeuralLib.config import RESULTS_PEAK_DETECTION
 
 # Step 1: Define architecture parameters
 arch_params = {
