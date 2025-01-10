@@ -158,7 +158,10 @@ class Architecture(pl.LightningModule):
             retrain_str = '_retraining'
         else:
             retrain_str = ''
-        arch_string = f"{self.hid_dim}hid_{self.n_layers}l_bidir{self.bidirectional}_lr{self.learning_rate}_drop{self.dropout}{retrain_str}"
+        if self.bidirectional:
+            arch_string = f"{self.hid_dim}hid_{self.n_layers}l_bidir{self.bidirectional}_lr{self.learning_rate}_drop{self.dropout}{retrain_str}"
+        else:
+            arch_string = f"{self.hid_dim}hid_{self.n_layers}l_lr{self.learning_rate}_drop{self.dropout}{retrain_str}"
         dir_name = f"{self.model_name}_{arch_string}_dt{timestamp}"
         checkpoints_directory = os.path.join(results_directory, 'checkpoints', dir_name)
         os.makedirs(checkpoints_directory, exist_ok=True)
@@ -205,6 +208,21 @@ class Architecture(pl.LightningModule):
     def train_from_scratch(self, path_x, path_y, patience, batch_size, epochs, results_directory, gpu_id=None,
                            all_samples=False, samples=None, dataset_name=None, trained_for=None, classification=False,
                            enable_tensorboard=False):
+        """
+        :param path_x: Path to training data (features).
+        :param path_y: Path to training labels (targets).
+        :param patience: Early stopping patience.
+        :param batch_size: Training batch size.
+        :param epochs: Number of training epochs.
+        :param results_directory: Directory to store results and checkpoints.
+        :param gpu_id: GPU to use.
+        :param all_samples: Use all training samples.
+        :param samples: Subset of samples for training.
+        :param dataset_name: Name of the dataset.
+        :param trained_for: Task the model is being trained for.
+        :param classification: Boolean flag for classification tasks.
+        :param enable_tensorboard: Enable TensorBoard logging.
+        """
 
         # Configure seed and device
         configure_seed(42)

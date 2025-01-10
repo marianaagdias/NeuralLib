@@ -1,1 +1,1 @@
-from signal_preprocessing import resampling, split_signal
+from NeuralLib.data_preprocessing.signal_preprocessing import resampling, split_signal
