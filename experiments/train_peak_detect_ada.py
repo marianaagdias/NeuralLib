@@ -1,9 +1,9 @@
 import os.path
 
-import architectures as arc
-from config import RESULTS_PEAK_DETECTION
-from data_preprocessing.gib01 import X, Y_BIN
-from production_models import post_process_peaks_binary
+import NeuralLib.architectures as arc
+from NeuralLib.config import RESULTS_PEAK_DETECTION
+from NeuralLib.data_preprocessing.gib01 import X, Y_BIN
+from NeuralLib.architectures import post_process_peaks_binary
 
 # Define architecture and training parameters
 architecture_name = 'GRUseq2seq'

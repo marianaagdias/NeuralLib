@@ -1,35 +1,54 @@
-from NeuralLib.transfer_learning.factory import TransferLearningFactory
+from NeuralLib.transfer_learning.factory import TLFactory
+from NeuralLib.transfer_learning.tlmodel import TLModel
 from NeuralLib.architectures import GRUseq2seq
-import torch.optim as optim
-import torch
-# Example dataloader (dummy)
-from torch.utils.data import DataLoader, TensorDataset
 
-# Initialize the factory
-factory = TransferLearningFactory()
+# Initialize factory
+factory = TLFactory()
 
-# Load a production model
-model = factory.load_production_model(
-    model_name="ECGPeakDetector",
-    hugging_repo="marianaagdias/ecg_peak_detection",
-    architecture_class=GRUseq2seq
+# Load Production Models
+factory.load_production_model("ProdModelA", "user/ProdModelA", GRUseq2seq)
+factory.load_production_model("ProdModelB", "user/ProdModelB", GRUseq2seq)
+
+# Define architecture hyperparameters
+arch_params = {
+    'n_features': 1,
+    'hid_dim': 16,
+    'n_layers': 3,
+    'dropout': 0.3,
+    'learning_rate': 0.01,
+    'bidirectional': True,
+    'task': 'classification',
+    'num_classes': 1,
+}
+
+# Create TransferLearningModel
+tl_model = TLModel(GRUseq2seq, **arch_params)
+
+# Define layer mapping and freezing strategy
+layer_mapping = {
+    'encoder_layer1': {'source_model': 'ProdModelA', 'source_layer': 'encoder'},
+    'decoder_layer2': {'source_model': 'ProdModelB', 'source_layer': 'decoder'}
+}
+freeze_layers = ['encoder_layer1']
+unfreeze_layers = ['decoder_layer2']
+
+# Configure TLModel
+factory.configure_tl_model(
+    tl_model=tl_model,
+    layer_mapping=layer_mapping,
+    freeze_layers=freeze_layers,
+    unfreeze_layers=unfreeze_layers
 )
-# Extract the encoder
-encoder = factory.extract_encoder(model)
 
-# Build a custom model for a new task
-custom_model = factory.build_custom_model(encoder, num_classes=5)
-
-# Freeze specific layers
-custom_model2 = factory.freeze_layers(custom_model, layers_to_freeze=['encoder.layer1', 'encoder.layer2'])
-
-optimizer = optim.Adam(custom_model.parameters(), lr=0.001)
-loss_fn = torch.nn.CrossEntropyLoss()
-
-X_train = torch.rand(100, 10)  # Example tensor
-y_train = torch.randint(0, 5, (100,))
-train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=8)
-
-# Fine-tune
-fine_tuned_model = factory.fine_tune_model(custom_model, train_loader, optimizer, loss_fn, epochs=5)
+# Retrain TLModel
+tl_model.train_tl(
+    path_x="data/x_train.npy",
+    path_y="data/y_train.npy",
+    patience=5,
+    batch_size=32,
+    epochs=20,
+    results_directory="results/transfer_ecg_model",
+    dataset_name="ECG Dataset",
+    trained_for="ECG Fine-Tuning"
+)
 

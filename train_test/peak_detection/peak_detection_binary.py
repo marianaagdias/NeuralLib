@@ -1,7 +1,7 @@
 import data_preprocessing.gib01 as gib
 from config import RESULTS_PEAK_DETECTION
 import architectures as arc
-from production_models.test_models import test_peak_detection_test_set
+from production_models.test_models_to_remove_ import test_peak_detection_test_set
 import time
 import os
 import glob
