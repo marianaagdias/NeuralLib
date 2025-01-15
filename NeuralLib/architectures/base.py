@@ -146,7 +146,7 @@ class Architecture(pl.LightningModule):
         super(Architecture, self).__init__()
         self.model_name = model_name
         self.training_info = {}  # training_info if training_info else {}
-        self.checkpoints_directory = ''  # this is the new checkpoints_directory
+        self.checkpoints_directory = 'Directory not available.'  # this is the new checkpoints_directory
 
     def create_checkpoints_directory(self, retraining, results_directory):
         """
@@ -539,6 +539,10 @@ class Architecture(pl.LightningModule):
         avg_loss = total_loss / len(test_dataloader)
 
         print(f"Average Test Loss: {avg_loss:.4f}")
+
+        # TODO: generate a report of the model performance so that it can be uploaded to hugging face
+        # have into account the task (classification vs regression and output dimension)
+
         return predictions, avg_loss
 
     def test_on_single_signal(self, X, checkpoints_dir=None, gpu_id=None, post_process_fn=None):

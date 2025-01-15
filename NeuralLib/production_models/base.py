@@ -17,6 +17,8 @@ class ProductionModel(arc.Architecture):
     """
 
     def __init__(self, model_name, hugging_repo, architecture_class):
+        # todo: hugging_repo should not be an input, it should be automatic from the 'model_name' (in the collection)
+        # todo: same for architecture_class
         super().__init__(model_name=model_name)  # initializing parent class
         """
         Initialize the production model.
@@ -97,6 +99,7 @@ class ProductionModel(arc.Architecture):
         if not isinstance(X, torch.Tensor):
             raise ValueError("Input X must be a PyTorch Tensor or NumPy array.")
 
+        # todo: when does the output have dim equal to 1? the network should never output such dimensionality
         # Handle different tensor shapes
         if X.dim() == 1:
             # Case 1: 1D time series → [seq_len] → [1, seq_len, 1]

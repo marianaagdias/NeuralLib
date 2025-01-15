@@ -97,6 +97,8 @@ def upload_production_model(local_dir, repo_name, token, model_name, description
     upload_folder(folder_path=local_dir, repo_id=repo_name, token=token)
     print(f"✅ Model successfully uploaded to Hugging Face: {repo_name}")
 
+    # todo: upload the performance file
+
 
 # to upload the model, in the terminal i logged in:
 # huggingface-cli login
