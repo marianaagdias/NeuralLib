@@ -7,7 +7,19 @@ from NeuralLib.architectures import Architecture
 # Sequence to sequence (direct correspondence between input and output) module
 class GRUseq2seq(Architecture):
     def __init__(self, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,
-                 task='classification', num_classes=1):
+                 task='classification', num_classes=1, multi_label=False):
+        """
+        :param n_features: Number of input features per time step.
+        :param hid_dim: Hidden dimension(s) of the GRU layers (int or vector of int - in the last case, the length
+        should match the number of hidden layers (n_layers)).
+        :param n_layers: Number of GRU layers.
+        :param dropout: Dropout rate(s).
+        :param learning_rate: Learning rate.
+        :param bidirectional: Whether the GRU layers are bidirectional.
+        :param task: 'classification' or 'regression'.
+        :param num_classes: Number of classes (for classification tasks). if binary, num_classes=1
+        :param multi_label: Whether the classification task is multilabel.
+        """
         super(GRUseq2seq, self).__init__(model_name="GRUseq2seq")
         self.n_features = n_features
         self.hid_dim = hid_dim if isinstance(hid_dim, list) else [hid_dim] * n_layers
@@ -16,7 +28,8 @@ class GRUseq2seq(Architecture):
         self.learning_rate = learning_rate
         self.bidirectional = bidirectional
         self.task = task  # classification or regression
-        self.num_classes = num_classes  # only used if the task is classification. if it is a binary classification: 1
+        self.num_classes = num_classes  # only used if the task is classification
+        self.multi_label = multi_label
 
         # Ensure hid_dim matches n_layers
         if len(self.hid_dim) != n_layers:
@@ -36,14 +49,17 @@ class GRUseq2seq(Architecture):
                        batch_first=True)
             )
             self.dropout_layers.append(nn.Dropout(p=self.dropout[i]))
-            input_dim = self.hid_dim[i] * (2 if bidirectional else 1)  # Adjust input_dim for bidirectional GRU
+            input_dim = self.hid_dim[i] * (2 if bidirectional else 1)
 
         # Fully connected output layer
-        self.fc_out = nn.Linear(input_dim, num_classes if task == 'classification' else n_features)
+        self.fc_out = nn.Linear(input_dim, self.num_classes if self.task == 'classification' else self.n_features)
 
         # Set loss function based on task_type
-        if task == 'classification':
-            self.criterion = nn.CrossEntropyLoss() if num_classes > 1 else nn.BCEWithLogitsLoss()
+        if self.task == 'classification':
+            if self.multi_label or self.num_classes == 1:
+                self.criterion = nn.BCEWithLogitsLoss()
+            else:
+                self.criterion = nn.CrossEntropyLoss()
         else:
             self.criterion = nn.MSELoss()
 
@@ -68,11 +84,13 @@ class GRUseq2seq(Architecture):
 
         # Unpack to apply the fully connected
         output, _ = pad_packed_sequence(packed_x, batch_first=True)
+        logits = self.fc_out(output)
 
-        # FC
-        output = self.fc_out(output)
-
-        return output
+        # Only apply softmax for multi-class classification during inference
+        if self.task == 'classification' and not self.multi_label and self.num_classes > 1:
+            return torch.softmax(logits, dim=-1)
+        # Else (num_classes==1 or multi-label is True)
+        return logits
 
     def training_step(self, batch, batch_idx):
         X, Y, lengths = batch
@@ -96,27 +114,57 @@ class GRUseq2seq(Architecture):
 
 class GRUseq2one(Architecture):
     def __init__(self, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,
-                 task='classification', num_classes=1):
+                 task='classification', num_classes=1, multi_label=False):
+        """
+        :param n_features: Number of input features per time step.
+        :param hid_dim: Hidden dimension(s) of the GRU layers (int or vector of int - in the latter case, the length
+        should match the number of hidden layers (n_layers)).
+        :param n_layers: Number of GRU layers.
+        :param dropout: Dropout rate(s).
+        :param learning_rate: Learning rate.
+        :param bidirectional: Whether the GRU layers are bidirectional.
+        :param task: 'classification' or 'regression'.
+        :param num_classes: Number of classes (for classification tasks). If binary, num_classes=1.
+        :param multi_label: Whether the classification task is multilabel.
+        """
         super(GRUseq2one, self).__init__(model_name="GRUseq2one")
         self.n_features = n_features
-        self.hid_dim = hid_dim
         self.n_layers = n_layers
-        self.dropout = dropout
+        self.hid_dim = hid_dim if isinstance(hid_dim, list) else [hid_dim] * self.n_layers
+        self.dropout = dropout if isinstance(dropout, list) else [dropout] * self.n_layers
         self.learning_rate = learning_rate
         self.bidirectional = bidirectional
         self.task = task  # classification or regression
-        self.num_classes = num_classes  # only used if the task is classification.
-        # if it is a binary classification, num_classes should be 1
+        self.num_classes = num_classes  # only used if the task is classification (if binary, num_classes=1).
+        self.multi_label = multi_label
 
-        self.gru = nn.GRU(input_size=n_features, hidden_size=hid_dim, num_layers=n_layers,
-                          bidirectional=bidirectional, batch_first=True, dropout=dropout)
-        self.d = 2 if bidirectional else 1
-        # For seq2one, the FC layer outputs one value or class per sample (not per timestep)
-        self.fc_out = nn.Linear(hid_dim * self.d, num_classes if task == 'classification' else 1)
+        # Ensure hid_dim and dropout match n_layers
+        if len(self.hid_dim) != n_layers:
+            raise ValueError(f"The length of hid_dim ({len(self.hid_dim)}) must match n_layers ({n_layers}).")
+        if len(self.dropout) != n_layers:
+            raise ValueError(f"The length of dropout ({len(self.dropout)}) must match n_layers ({n_layers}).")
+
+        # Dynamically create GRU layers
+        self.gru_layers = nn.ModuleList()
+        self.dropout_layers = nn.ModuleList()
+        input_dim = n_features
+        for i in range(n_layers):
+            self.gru_layers.append(
+                nn.GRU(input_size=input_dim, hidden_size=self.hid_dim[i],
+                       bidirectional=bidirectional, batch_first=True)
+            )
+            self.dropout_layers.append(nn.Dropout(p=self.dropout[i]))
+            input_dim = self.hid_dim[i] * (2 if bidirectional else 1)
+
+        # Fully connected output layer
+        self.fc_out = nn.Linear(input_dim, self.num_classes if self.task == 'classification' else 1)
 
         # Set loss function based on task_type
         if task == 'classification':
-            self.criterion = nn.CrossEntropyLoss() if num_classes > 1 else nn.BCEWithLogitsLoss()
+            if self.multi_label or self.num_classes == 1:
+                self.criterion = nn.BCEWithLogitsLoss()
+            else:
+                self.criterion = nn.CrossEntropyLoss()
         else:
             self.criterion = nn.MSELoss()
 
@@ -126,19 +174,30 @@ class GRUseq2one(Architecture):
         # Pack the padded sequence (expects inputs in shape [batch_size, seq_len, input_size])
         packed_x = pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
 
-        # Pass through GRU layers
-        packed_output, _ = self.gru(packed_x)
+        # Pass through GRU layers with dropout applied conditionally
+        for i, gru in enumerate(self.gru_layers):
+            packed_x, _ = gru(packed_x)
+            output, _ = pad_packed_sequence(packed_x, batch_first=True)
 
-        # Unpack to get the final hidden state of the last timestep
-        output, _ = pad_packed_sequence(packed_output, batch_first=True)
+            if self.dropout[i] > 0:
+                output = self.dropout_layers[i](output)
 
-        # Take only the output of the last time step for each sequence
-        last_outputs = output[torch.arange(output.size(0)), lengths - 1]  # Select the last hidden state
+            # Repack the sequence if it's not the last layer
+            if i < self.n_layers - 1:
+                packed_x = pack_padded_sequence(output, lengths, batch_first=True, enforce_sorted=False)
 
-        # Pass through fully connected layer (for classification or regression)
-        output = self.fc_out(last_outputs)
+        # Take the output of the last timestep for each sequence
+        last_outputs = output[torch.arange(output.size(0)), lengths - 1]
 
-        return output
+        # Pass through the fully connected layer
+        logits = self.fc_out(last_outputs)
+
+        # Only apply softmax for multi-class classification during inference
+        if self.task == 'classification' and not self.multi_label and self.num_classes > 1:
+            return torch.softmax(logits, dim=-1)
+
+        # Else (num_classes==1 or multi-label is True), return raw logits
+        return logits
 
     def training_step(self, batch, batch_idx):
         X, Y, lengths = batch
@@ -156,7 +215,8 @@ class GRUseq2one(Architecture):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=1e-5)
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+        return [optimizer], [scheduler] if scheduler else [optimizer]
 
 
 class GRUEncoderDecoder(Architecture):
