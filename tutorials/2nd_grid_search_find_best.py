@@ -33,21 +33,18 @@ train_params = {
     'enable_tensorboard': True,
 }
 
-# Step 2: Train the GRUseq2seq architecture from scratch
-print("Training GRUseq2seq architecture from scratch...")
-
-# Step 3: Perform grid search with retraining
-print("Performing grid search with retraining...")
+# Step 2: Perform grid search
+print("Performing grid search...")
 best_dir, best_val_loss, val_losses = arc.run_grid_search(
     architecture_name, archi_params_options, train_params
 )
 print(f"Best model found with validation loss: {best_val_loss:.4f}, saved in {best_dir}")
 
-# Step 4: Test the best model on the test set
+# Step 3: Test the best model on the test set
 print("Testing the best model on the test set...")
-# 4.1. Load architecture parameters from the hparams.yaml file
+# 3.1. Load architecture parameters from the hparams.yaml file
 architecture_params = arc.get_hparams_from_checkpoints(best_dir)
-# 4.2 Initialize the model using the loaded parameters
+# 3.2 Initialize the model using the loaded parameters
 model = arc.GRUseq2seq(**architecture_params)
 
 predictions, avg_loss = model.test_on_test_set(
@@ -61,7 +58,7 @@ predictions, avg_loss = model.test_on_test_set(
 )
 print(f"Testing complete. Average Test Loss: {avg_loss:.4f}")
 
-# Step 5: Test the best model on a single signal
+# Step 4: Test the best model on a single signal
 print("Testing on a single signal...")
 single_signal = torch.rand(100, 1)  # Example input signal (sequence length: 100, 1 feature)
 single_prediction = model.test_on_single_signal(single_signal, checkpoints_dir=best_dir, gpu_id=train_params["gpu_id"])
