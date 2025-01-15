@@ -9,10 +9,11 @@ def get_valid_architectures():
     """
     Get a list of valid architecture classes defined in biosignals_architectures.py.
     """
+    # print(list(dir(arc)))  # Debug: Print all names in the arc module
     valid_architectures = [
         name for name in dir(arc)
         if isinstance(getattr(arc, name), type) and getattr(arc,
-                                                            name).__module__ == 'architectures.biosignals_architectures'
+                                                            name).__module__ == 'NeuralLib.architectures.biosignals_architectures'
     ]
     return valid_architectures
 

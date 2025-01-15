@@ -1,10 +1,11 @@
 import NeuralLib.architectures as arc
 from NeuralLib.config import RESULTS_PEAK_DETECTION
 from NeuralLib.data_preprocessing.gib01 import X, Y_BIN
+import torch
 # from huggingface_hub import HfApi, HfFolder, snapshot_download, upload_folder
 
 # Step 1: Define architecture and training parameters
-architecture_name = 'GRUseq2seqCustom'
+architecture_name = 'GRUseq2seq'
 print(arc.get_valid_architectures())
 archi_params_options = {
     "n_features": [1],
