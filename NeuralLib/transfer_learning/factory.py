@@ -12,15 +12,11 @@ class TLFactory:
     def __init__(self):
         self.models = {}
 
-    def load_production_model(self, model_name, hugging_repo, architecture_class):
+    def load_production_model(self, model_name, hugging_repo, architecture_name):
         """
         Load a production model and store it in the factory.
         """
-        model = ProductionModel(
-            model_name=model_name,
-            hugging_repo=hugging_repo,
-            architecture_class=architecture_class
-        )
+        model = ProductionModel(model_name=model_name)
         self.models[model_name] = model
         print(f"✅ Loaded ProductionModel: {model_name}")
 
@@ -114,15 +110,11 @@ class TransferLearningFactory:
     def __init__(self):
         self.models = {}
 
-    def load_production_model(self, model_name, hugging_repo, architecture_class):
+    def load_production_model(self, model_name, hugging_repo, architecture_name):
         """
         Load an existing production model.
         """
-        model = ProductionModel(
-            model_name=model_name,
-            hugging_repo=hugging_repo,
-            architecture_class=architecture_class
-        )
+        model = ProductionModel(model_name=model_name)
         self.models[model_name] = model
         print(f"✅ Model '{model_name}' loaded successfully.")
         return model
