@@ -24,12 +24,7 @@ PEAKS_DATA_PATH = os.path.join(DATA_BASE_DIR, "gib01_ecg", "peaks.json")
 # Directories for saving processed datasets
 DATASETS_GIB01 = os.path.join(DATA_BASE_DIR, "gib01_ecg", "datasets")
 
-# Directories for saving model results and trained models
-RESULTS_PEAK_DETECTION = os.path.join(RESULTS_BASE_DIR, "peak_detection")
-RESULTS_PEAK_FINE_TUNING = os.path.join(RESULTS_BASE_DIR, "peak_detection_ft")
-
 # Create the directories if they don't exist
-# os.makedirs(DATA_BASE_DIR, exist_ok=True)
 os.makedirs(RESULTS_BASE_DIR, exist_ok=True)
 os.makedirs(HUGGING_MODELS_BASE_DIR, exist_ok=True)
 
