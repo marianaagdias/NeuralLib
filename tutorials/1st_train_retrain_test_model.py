@@ -1,6 +1,10 @@
 from NeuralLib.architectures import GRUseq2seq
-from NeuralLib.data_preprocessing.gib01 import X, Y_BIN
-from NeuralLib.config import RESULTS_PEAK_DETECTION
+from NeuralLib.config import DATASETS_GIB01
+import os
+
+# Data paths
+X = os.path.join(DATASETS_GIB01, 'x')
+Y_BIN = os.path.join(DATASETS_GIB01, 'y_bin')
 
 # Step 1: Define architecture parameters
 arch_params = {
@@ -26,7 +30,6 @@ train_params_ = {
     'all_samples': False,
     'samples': 3,
     'gpu_id': None,
-    'results_directory': RESULTS_PEAK_DETECTION,
     'enable_tensorboard': True
 }
 
@@ -39,7 +42,6 @@ model.train_from_scratch(
     patience=train_params_['patience'],
     batch_size=train_params_['batch_size'],
     epochs=train_params_['epochs'],
-    results_directory=train_params_['results_directory'],
     gpu_id=train_params_['gpu_id'],
     all_samples=train_params_['all_samples'],
     samples=train_params_['samples'],
@@ -50,6 +52,7 @@ model.train_from_scratch(
 
 # Save checkpoints directory after initial training
 checkpoints_dir = model.checkpoints_directory
+# Note: the checkpoints_dir is created in RESULTS_BASE_DIR\<model_name> (check config file)
 
 # Step 4: Retrain the model for 2 more epochs
 print("Retraining...")
@@ -61,7 +64,6 @@ model.retrain(
     patience=train_params_retrain['patience'],
     batch_size=train_params_retrain['batch_size'],
     epochs=train_params_retrain['epochs'],
-    results_directory=train_params_retrain['results_directory'],
     gpu_id=train_params_retrain['gpu_id'],
     all_samples=train_params_retrain['all_samples'],
     samples=train_params_retrain['samples'],
@@ -78,7 +80,7 @@ predictions, avg_loss = model.test_on_test_set(
     path_y=train_params_['path_y'],
     checkpoints_dir=checkpoints_dir,
     gpu_id=train_params_['gpu_id'],
-    all_samples=False, # if True, test on all available samples
+    all_samples=False,  # if True, test on all available samples
     samples=5,
     save_predictions=True
 )

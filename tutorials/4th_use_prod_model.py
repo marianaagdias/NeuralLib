@@ -1,6 +1,6 @@
 from NeuralLib.config import DATASETS_GIB01
-from NeuralLib.production_models import ECGPeakDetector, ProductionModel
-from NeuralLib.architectures import GRUseq2seq, post_process_peaks_binary
+from NeuralLib.production_models import ProductionModel
+from NeuralLib.architectures import post_process_peaks_binary
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,19 +11,11 @@ i = 0
 file = os.listdir(path_sig)[i]
 test_signal = np.load(os.path.join(path_sig, file))
 
-# Initialize PeakDetectorProd (downloads files if needed)
-peak_detector = ECGPeakDetector()
-predicted_peaks = peak_detector.detect_peaks(test_signal)
+ProductionModel.list_collection_models()
 
-# Alternatively:
-# the creation of this subclass was not strictly necessary, one could run:
-peak_detector_ = ProductionModel(
-    model_name="ECGPeakDetector",
-    hugging_repo="marianaagdias/ecg_peak_detection",
-    architecture_class=GRUseq2seq
-)
+peak_detector = ProductionModel(model_name="ECGPeakDetector")
 # and then:
-predicted_peaks2 = peak_detector.predict(
+predicted_peaks = peak_detector.predict(
     X=test_signal,
     gpu_id=None,
     post_process_fn=post_process_peaks_binary,
@@ -40,4 +32,3 @@ plt.title(file)
 plt.show()
 
 print(predicted_peaks)
-print(predicted_peaks2)

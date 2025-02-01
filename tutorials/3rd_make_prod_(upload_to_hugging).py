@@ -16,7 +16,7 @@ and then paste the token (below)
 token = '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'
 description = "GRU-based model for ECG peak detection"
 upload_production_model(local_dir=r'C:\Users\Catia Bastos\dev\trained_models\ECGPeakDetector',
-                        repo_name='marianaagdias/ecg_peak_detection',
+                        repo_name='marianaagdias/ECGPeakDetector',
                         token=token,
                         model_name='ECGPeakDetector',
                         description=description)

@@ -1,13 +1,18 @@
 import NeuralLib.architectures as arc
-from NeuralLib.config import RESULTS_PEAK_DETECTION
-from NeuralLib.data_preprocessing.gib01 import X, Y_BIN
 import torch
 # from huggingface_hub import HfApi, HfFolder, snapshot_download, upload_folder
+from NeuralLib.config import DATASETS_GIB01
+import os
+
+# Data paths
+X = os.path.join(DATASETS_GIB01, 'x')
+Y_BIN = os.path.join(DATASETS_GIB01, 'y_bin')
 
 # Step 1: Define architecture and training parameters
 architecture_name = 'GRUseq2seq'
 print(arc.get_valid_architectures())
 archi_params_options = {
+    "model_name": 'ECGPeakDetector',
     "n_features": [1],
     "hid_dim": [[32, 64, 64], [64, 64, 64], [64, 128, 64], [64, 128]],
     "n_layers": [3, 2],
@@ -29,7 +34,6 @@ train_params = {
     'all_samples': False,
     'samples': 3,
     'gpu_id': None,
-    'results_directory': RESULTS_PEAK_DETECTION,
     'enable_tensorboard': True,
 }
 
