@@ -1,7 +1,5 @@
 import itertools
 import NeuralLib.architectures.biosignals_architectures as arc
-from NeuralLib.data_preprocessing.gib01 import X, Y_BIN
-from NeuralLib.config import RESULTS_PEAK_DETECTION
 from NeuralLib.architectures.base import get_hparams_from_checkpoints, get_hparams_from_hugging, validate_training_context
 
 
@@ -63,7 +61,6 @@ def train_architecture_from_scratch(architecture_name, architecture_params, trai
         patience=train_params['patience'],
         dataset_name=train_params['dataset_name'],
         trained_for=train_params['trained_for'],
-        results_directory=train_params['results_directory'],
         gpu_id=train_params.get('gpu_id', None),
         enable_tensorboard=train_params['enable_tensorboard'],
     )
@@ -81,7 +78,8 @@ def retrain_architecture(architecture_name, train_params, checkpoints_directory=
     :param checkpoints_directory: Directory containing checkpoints and training info.
     :param train_params: Dictionary containing paths and settings for training data.
     """
-    validate_training_context(retraining=True, checkpoints_directory=checkpoints_directory, hugging_face_model=hugging_face_model)
+    validate_training_context(retraining=True, checkpoints_directory=checkpoints_directory,
+                              hugging_face_model=hugging_face_model)
     validate_architecture_name(architecture_name)
 
     # Load architecture's hyperparameters (number of layers, nodes, etc - structure of the model)
@@ -109,7 +107,6 @@ def retrain_architecture(architecture_name, train_params, checkpoints_directory=
         patience=train_params['patience'],
         dataset_name=train_params['dataset_name'],
         trained_for=train_params['trained_for'],
-        results_directory=train_params['results_directory'],
         gpu_id=train_params.get('gpu_id', None),
         checkpoints_directory=checkpoints_directory,
         hugging_face_model=hugging_face_model,
@@ -129,7 +126,10 @@ def run_grid_search(architecture_name, architecture_params_options, train_params
 
     # Extract parameter names with multiple options
     param_names = list(architecture_params_options.keys())
-    param_values = [architecture_params_options[key] for key in param_names]
+    # param_values = [architecture_params_options[key] for key in param_names]
+    param_values = [[architecture_params_options[key]] if isinstance(architecture_params_options[key], str)
+                    else architecture_params_options[key]
+                    for key in param_names]
 
     # Generate all combinations of hyperparameters
     combinations = list(itertools.product(*param_values))
@@ -171,8 +171,14 @@ def run_grid_search(architecture_name, architecture_params_options, train_params
 
 # Example usage
 if __name__ == "__main__":
+
+    from NeuralLib.config import DATASETS_GIB01
+    import os
+    X = os.path.join(DATASETS_GIB01, 'x')
+    Y_BIN = os.path.join(DATASETS_GIB01, 'y_bin')
     architecture_name_ = 'GRUseq2seq'
     archi_params_ = {
+        'model_name': 'ECGPeakDetector',
         'n_features': 1,
         'hid_dim': 8,
         'n_layers': 2,
@@ -194,7 +200,6 @@ if __name__ == "__main__":
         'all_samples': False,
         'samples': 3,
         'gpu_id': None,
-        'results_directory': RESULTS_PEAK_DETECTION,
         'enable_tensorboard': True
     }
 
