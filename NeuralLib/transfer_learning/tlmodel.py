@@ -11,12 +11,14 @@ class TLModel(Architecture):
     Transfer Learning Model that supports layer-wise weight injection and flexible training strategies.
     """
     def __init__(self, architecture_class, **kwargs):
+        # TODO: SUBSTITUIR ARCHITECTURE CLASS POR ARCHITECTURE NAME E VER SE É NECESSARIO TER O MODEL_NAME AQUI
+        #  ja estava a haver confusao entre model_name da architeture e do model mesmo aqui.
         """
         Initialize the architecture just like any other model.
         :param architecture_class: The architecture class (e.g., GRUseq2seq).
         :param kwargs: Architecture hyperparameters.
         """
-        super().__init__(model_name=kwargs.get('model_name', 'TransferLearningModel'))
+        super().__init__(architecture_name=kwargs.get('architecture_name', 'TransferLearningModel'))
         self.architecture_class = architecture_class
         self.hyperparams = kwargs
         self.model = self.architecture_class(**self.hyperparams)
