@@ -6,7 +6,7 @@ from NeuralLib.architectures import Architecture
 
 # Sequence to sequence (direct correspondence between input and output) module
 class GRUseq2seq(Architecture):
-    def __init__(self, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,
+    def __init__(self, model_name, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,
                  task='classification', num_classes=1, multi_label=False):
         """
         :param n_features: Number of input features per time step.
@@ -20,7 +20,8 @@ class GRUseq2seq(Architecture):
         :param num_classes: Number of classes (for classification tasks). if binary, num_classes=1
         :param multi_label: Whether the classification task is multilabel.
         """
-        super(GRUseq2seq, self).__init__(model_name="GRUseq2seq")
+        super(GRUseq2seq, self).__init__(architecture_name="GRUseq2seq")
+        self.model_name = model_name
         self.n_features = n_features
         self.hid_dim = hid_dim if isinstance(hid_dim, list) else [hid_dim] * n_layers
         self.n_layers = n_layers
@@ -28,7 +29,7 @@ class GRUseq2seq(Architecture):
         self.learning_rate = learning_rate
         self.bidirectional = bidirectional
         self.task = task  # classification or regression
-        self.num_classes = num_classes  # only used if the task is classification
+        self.num_classes = num_classes if task == 'classification' else 'NA'  # only used if the task is classification
         self.multi_label = multi_label
 
         # Ensure hid_dim matches n_layers
@@ -113,7 +114,7 @@ class GRUseq2seq(Architecture):
 
 
 class GRUseq2one(Architecture):
-    def __init__(self, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,
+    def __init__(self, model_name, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,
                  task='classification', num_classes=1, multi_label=False):
         """
         :param n_features: Number of input features per time step.
@@ -127,7 +128,8 @@ class GRUseq2one(Architecture):
         :param num_classes: Number of classes (for classification tasks). If binary, num_classes=1.
         :param multi_label: Whether the classification task is multilabel.
         """
-        super(GRUseq2one, self).__init__(model_name="GRUseq2one")
+        super(GRUseq2one, self).__init__(architecture_name="GRUseq2one")
+        self.model_name = model_name
         self.n_features = n_features
         self.n_layers = n_layers
         self.hid_dim = hid_dim if isinstance(hid_dim, list) else [hid_dim] * self.n_layers
@@ -220,10 +222,11 @@ class GRUseq2one(Architecture):
 
 
 class GRUEncoderDecoder(Architecture):
-    def __init__(self, n_features, enc_hid_dim, dec_hid_dim, enc_layers, dec_layers, dropout, learning_rate,
+    def __init__(self, model_name, n_features, enc_hid_dim, dec_hid_dim, enc_layers, dec_layers, dropout, learning_rate,
                  bidirectional=False):
 
-        super(GRUEncoderDecoder, self).__init__(model_name="GRUEncoderDecoder")
+        super(GRUEncoderDecoder, self).__init__(architecture_name="GRUEncoderDecoder")
+        self.model_name = model_name
         self.n_features = n_features
         self.enc_hid_dim = enc_hid_dim
         self.dec_hid_dim = dec_hid_dim
@@ -315,9 +318,10 @@ class GRUEncoderDecoder(Architecture):
 
 
 class TransformerSeq2Seq(Architecture):
-    def __init__(self, n_features, d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward, dropout,
+    def __init__(self, model_name, n_features, d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward, dropout,
                  learning_rate):
-        super(TransformerSeq2Seq, self).__init__(model_name="TransformerSeq2Seq")
+        super(TransformerSeq2Seq, self).__init__(architecture_name="TransformerSeq2Seq")
+        self.model_name = model_name
         self.n_features = n_features
         self.d_model = d_model
         self.nhead = nhead
@@ -382,9 +386,10 @@ class TransformerSeq2Seq(Architecture):
 
 
 class TransformerSeq2One(Architecture):  # Encoder-only Transformer
-    def __init__(self, n_features, d_model, nhead, num_encoder_layers, dim_feedforward, dropout, learning_rate,
+    def __init__(self, model_name, n_features, d_model, nhead, num_encoder_layers, dim_feedforward, dropout, learning_rate,
                  num_classes=1):
-        super(TransformerSeq2One, self).__init__(model_name="TransformerSeq2One")
+        super(TransformerSeq2One, self).__init__(architecture_name="TransformerSeq2One")
+        self.model_name = model_name
         self.n_features = n_features
         self.d_model = d_model
         self.nhead = nhead
@@ -443,9 +448,10 @@ class TransformerSeq2One(Architecture):  # Encoder-only Transformer
 
 
 class TransformerEncoderDecoder(Architecture):
-    def __init__(self, n_features, d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward, dropout,
+    def __init__(self, model_name, n_features, d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward, dropout,
                  learning_rate):
-        super(TransformerEncoderDecoder, self).__init__(model_name="TransformerEncoderDecoder")
+        super(TransformerEncoderDecoder, self).__init__(architecture_name="TransformerEncoderDecoder")
+        self.model_name = model_name
         self.n_features = n_features
         self.d_model = d_model
         self.nhead = nhead

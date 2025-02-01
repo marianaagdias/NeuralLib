@@ -12,6 +12,7 @@ import importlib.util
 from torch.utils.data import DataLoader
 from NeuralLib.utils import configure_seed, configure_device, DatasetSequence, collate_fn, LossPlotCallback, \
     save_predictions_with_filename
+from NeuralLib.config import RESULTS_BASE_DIR
 
 
 def get_weights_and_info_from_checkpoints(prev_checkpoints_dir):
@@ -142,13 +143,13 @@ def validate_training_context(retraining, checkpoints_directory, hugging_face_mo
 
 
 class Architecture(pl.LightningModule):
-    def __init__(self, model_name):
+    def __init__(self, architecture_name):
         super(Architecture, self).__init__()
-        self.model_name = model_name
+        self.architecture_name = architecture_name
         self.training_info = {}  # training_info if training_info else {}
         self.checkpoints_directory = 'Directory not available.'  # this is the new checkpoints_directory
 
-    def create_checkpoints_directory(self, retraining, results_directory):
+    def create_checkpoints_directory(self, retraining):
         """
         Creates a directory where the model's checkpoints will be saved during training
         :return: checkpoints_directory
@@ -162,8 +163,8 @@ class Architecture(pl.LightningModule):
             arch_string = f"{self.hid_dim}hid_{self.n_layers}l_bidir{self.bidirectional}_lr{self.learning_rate}_drop{self.dropout}{retrain_str}"
         else:
             arch_string = f"{self.hid_dim}hid_{self.n_layers}l_lr{self.learning_rate}_drop{self.dropout}{retrain_str}"
-        dir_name = f"{self.model_name}_{arch_string}_dt{timestamp}"
-        checkpoints_directory = os.path.join(results_directory, 'checkpoints', dir_name)
+        dir_name = f"{self.architecture_name}_{arch_string}_dt{timestamp}"
+        checkpoints_directory = os.path.join(RESULTS_BASE_DIR, self.model_name, 'checkpoints', dir_name)
         os.makedirs(checkpoints_directory, exist_ok=True)
         self.checkpoints_directory = checkpoints_directory
         return checkpoints_directory
@@ -173,7 +174,8 @@ class Architecture(pl.LightningModule):
         """ Save information about the current training process and append previous training info to the history if
         retraining."""
         current_training_info = {
-            'model': self.model_name,
+            'architecture': self.architecture_name,
+            'model_name': self.model_name,
             'train_dataset': train_dataset_name,
             'task': trained_for,
             'gpu_model': gpu_model,
@@ -205,7 +207,7 @@ class Architecture(pl.LightningModule):
             with open(training_info_file, 'w') as f:
                 json.dump(training_info, f, indent=4)
 
-    def train_from_scratch(self, path_x, path_y, patience, batch_size, epochs, results_directory, gpu_id=None,
+    def train_from_scratch(self, path_x, path_y, patience, batch_size, epochs, gpu_id=None,
                            all_samples=False, samples=None, dataset_name=None, trained_for=None, classification=False,
                            enable_tensorboard=False):
         """
@@ -214,7 +216,6 @@ class Architecture(pl.LightningModule):
         :param patience: Early stopping patience.
         :param batch_size: Training batch size.
         :param epochs: Number of training epochs.
-        :param results_directory: Directory to store results and checkpoints.
         :param gpu_id: GPU to use.
         :param all_samples: Use all training samples.
         :param samples: Subset of samples for training.
@@ -246,7 +247,7 @@ class Architecture(pl.LightningModule):
 
         # Initialize the model
         model = self  # same as doing: model = GRUseq2seq(n_features=self.n_features, hid_dim=self.hid_dim,...)
-        self.create_checkpoints_directory(retraining=False, results_directory=results_directory)
+        self.create_checkpoints_directory(retraining=False)
         print(f"Checkpoints directory created at {self.checkpoints_directory}")
 
         # Datasets and Dataloaders
@@ -268,7 +269,7 @@ class Architecture(pl.LightningModule):
         checkpoint_callback = ModelCheckpoint(
             monitor='val_loss',
             dirpath=self.checkpoints_directory,
-            filename=f"{self.model_name}_{arch_string}",
+            filename=f"{self.architecture_name}_{arch_string}",
             save_top_k=1,
             mode='min'
         )
@@ -331,7 +332,7 @@ class Architecture(pl.LightningModule):
         torch.save(self.state_dict(), final_weights_pth)
         print(f"Weights saved as {final_weights_pth}")
 
-    def retrain(self, path_x, path_y, patience, batch_size, epochs, results_directory, gpu_id=None, all_samples=False,
+    def retrain(self, path_x, path_y, patience, batch_size, epochs, gpu_id=None, all_samples=False,
                 samples=None, dataset_name=None, trained_for=None, classification=False, enable_tensorboard=False,
                 checkpoints_directory=None, hugging_face_model=None):
 
@@ -373,7 +374,7 @@ class Architecture(pl.LightningModule):
         print(f"Weights loaded successfully from {weights_pth}")
 
         # Create new checkpoints directory
-        self.create_checkpoints_directory(retraining=True, results_directory=results_directory)
+        self.create_checkpoints_directory(retraining=True)
 
         # Datasets and Dataloaders
         train_dataset = DatasetSequence(path_x=path_x, path_y=path_y, part='train', all_samples=all_samples,
@@ -384,6 +385,7 @@ class Architecture(pl.LightningModule):
         val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
         # collate_fn is necessary for handling signals with different lenghts (they are padded per batch)
 
+        # todo:  class weights
         # Calculate class weights based on the training dataset -- only for classification problems
         # if classification:
         #     class_weights = calculate_class_weights(train_dataset)
@@ -395,7 +397,7 @@ class Architecture(pl.LightningModule):
         checkpoint_callback = ModelCheckpoint(
             monitor='val_loss',
             dirpath=self.checkpoints_directory,
-            filename=f"{self.model_name}_{arch_string}",
+            filename=f"{self.architecture_name}_{arch_string}",
             save_top_k=1,
             mode='min'
         )
