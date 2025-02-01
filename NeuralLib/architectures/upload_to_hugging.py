@@ -28,8 +28,6 @@ library_name: pytorch
 tags:
 - biosignals
 - {model_name.lower()}
-datasets:
-- {training_info.get('dataset_name', 'unknown')}
 metrics:
 - validation_loss
 ---
@@ -65,12 +63,35 @@ print(predictions)\n
 def upload_production_model(local_dir, repo_name, token, model_name, description=""):
     """
     Uploads trained model files to Hugging Face Model Hub.
-    :param local_dir: Directory containing model files (weights, hparams, etc.).
+    :param local_dir: Directory containing model files (model_weights.pth, hparams.yaml, training_info.json).
     :param repo_name: Hugging Face repository name.
     :param token: Hugging Face authentication token.
     :param description: Model description for the README.
     """
-    # Ensure README is present
+    # Validate inputs
+    if not local_dir:
+        local_dir = input("Please provide the local directory containing model files: ")
+    if not os.path.exists(local_dir):
+        raise ValueError(f"The directory '{local_dir}' does not exist. Please provide a valid path.")
+
+    if not repo_name:
+        repo_name = input("Please provide the Hugging Face repository name: ")
+
+    if not token:
+        token = input("Please provide your Hugging Face authentication token: ")
+
+    if not model_name:
+        model_name = input("Please provide the model name: ")
+
+    if not description:
+        print("\nA model description is required. It should include:")
+        print("- What the model does.")
+        print("- If the model has been published, provide the reference (paper, publication,...).")
+        print("- If the model has not been published, provide performance details.")
+        print("- Key details about the model so others understand how to use it.")
+        description = input("Please provide the model description: ")
+
+    # Create README file
     readme_path = os.path.join(local_dir, "README.md")
     json_path = os.path.join(local_dir, "training_info.json")
     yaml_path = os.path.join(local_dir, "hparams.yaml")
@@ -100,7 +121,4 @@ def upload_production_model(local_dir, repo_name, token, model_name, description
     # todo: upload the performance file
 
 
-# to upload the model, in the terminal i logged in:
-# huggingface-cli login
-# and then paste the token (check 3rd tutorial - make prod: upload to hugging)
 
