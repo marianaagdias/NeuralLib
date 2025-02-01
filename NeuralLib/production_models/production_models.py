@@ -1,5 +1,5 @@
 from NeuralLib.production_models.base import ProductionModel
-from NeuralLib.architectures import GRUseq2seq, post_process_peaks_binary
+from NeuralLib.architectures import post_process_peaks_binary
 
 
 class ECGPeakDetector(ProductionModel):
@@ -9,9 +9,7 @@ class ECGPeakDetector(ProductionModel):
     """
 
     def __init__(self):
-        super().__init__(model_name="ECGPeakDetector",
-                         hugging_repo="marianaagdias/ecg_peak_detection",
-                         architecture_class=GRUseq2seq)
+        super().__init__(model_name="ECGPeakDetector")
 
     def detect_peaks(self, signal, gpu_id=None, threshold=0.5, filter_peaks=True):
         processed_output = self.predict(signal,

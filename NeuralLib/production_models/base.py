@@ -1,34 +1,48 @@
 import NeuralLib.architectures as arc
+from NeuralLib.config import HUGGING_MODELS_BASE_DIR
+from NeuralLib.utils import configure_device
 import torch
 import json
 import os
 import yaml
-from huggingface_hub import snapshot_download, list_models
-from NeuralLib.config import HUGGING_MODELS_BASE_DIR
-from NeuralLib.utils import configure_device
 import numpy as np
+from huggingface_hub import snapshot_download, get_collection
 
 
 class ProductionModel(arc.Architecture):
     """
     Production Models
     A class for trained models, extending Architecture by adding weights and training information.
-    Includes methods for uploading to and importing from Hugging Face.
+    Includes methods for importing from Hugging Face.
+
+    Models can be retrieved from:
+    - The predefined Hugging Face collection: "NeuralLib: Deep Learning Models for Biosignals Processing".
+    - Any public or private Hugging Face repository if explicitly specified.
     """
 
-    def __init__(self, model_name, hugging_repo, architecture_class):
-        # todo: hugging_repo should not be an input, it should be automatic from the 'model_name' (in the collection)
-        # todo: same for architecture_class
-        super().__init__(model_name=model_name)  # initializing parent class
+    def __init__(self, model_name, hugging_repo=None):
         """
         Initialize the production model.
-        :param model_name: Name of the model class (used for directory naming).
-        :param hugging_repo: Hugging Face repo name (e.g., "username/model_name").
+
+        :param model_name: (str) The name of the model to be loaded.
+        :param hugging_repo: (str, optional) The full Hugging Face repository ID (e.g., "username/model_name").
+            - If provided, the model will be loaded from this repository.
+            - If not provided, the model will be searched in the NeuralLib collection.
+            - The repository **must** contain the required files: `model_weights.pth`, `hparams.yaml`, `training_info.json`.
         """
         self.model_name = model_name
         self.local_dir = os.path.join(HUGGING_MODELS_BASE_DIR, self.model_name)
+
         self.hugging_repo = hugging_repo
-        self.architecture_class = architecture_class
+        if self.hugging_repo is None:
+            # api = HfApi()
+            collection_id = "marianaagdias/neurallib-deep-learning-models-for-biosignals-processing-67473f72e30e1f0874ec5ebe"
+            collection = get_collection(collection_id)
+            # Find the model in the collection
+            for item in collection.items:
+                if item.item_id.split("/")[-1] == model_name:
+                    self.hugging_repo = item.item_id
+                    break
 
         # Ensure model files are cached locally
         self._download_and_cache_files()
@@ -39,6 +53,15 @@ class ProductionModel(arc.Architecture):
         self.training_info_path = os.path.join(self.local_dir, "training_info.json")
 
         self.training_info = self._load_json(self.training_info_path)
+        print(self.training_info)
+
+        self.architecture_name = self.training_info['architecture']
+        # Dynamically get the architecture class from biosignals_architectures
+        self.architecture_class = getattr(arc, self.architecture_name, None)
+        if not self.architecture_class:
+            raise ValueError(f"Architecture {self.architecture_name} not found in biosignals_architectures.")
+
+        super().__init__(architecture_name=self.architecture_name)  # initializing parent class
 
         # Initialize model state with weights
         self._initialize_model()
@@ -53,7 +76,7 @@ class ProductionModel(arc.Architecture):
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to download model files for {self.model_name}. "
-                    f"Ensure the Hugging Face repo '{self.hugging_repo}' exists and your internet connection is stable. "
+                    f"Ensure the Hugging Face repo '{self.hugging_repo}' exists and your internet connection is stable."
                     f"Error: {e}")
         else:
             print(f"Using cached model files at: {self.local_dir}")
@@ -99,7 +122,6 @@ class ProductionModel(arc.Architecture):
         if not isinstance(X, torch.Tensor):
             raise ValueError("Input X must be a PyTorch Tensor or NumPy array.")
 
-        # todo: when does the output have dim equal to 1? the network should never output such dimensionality
         # Handle different tensor shapes
         if X.dim() == 1:
             # Case 1: 1D time series → [seq_len] → [1, seq_len, 1]
@@ -147,14 +169,12 @@ class ProductionModel(arc.Architecture):
             return yaml.safe_load(f)
 
     @staticmethod
-    def list_collection_models(collection_name, token):
+    def list_collection_models():
         """
         Lists all models in a given Hugging Face collection.
-
-        :param collection_name: Name of the collection.
-        :param token: Hugging Face token for authentication.
-        :return: List of models in the collection.
         """
-        models = list_models(search=collection_name, token=token)
-        return [model.modelId for model in models]
+        collection_id = "marianaagdias/neurallib-deep-learning-models-for-biosignals-processing-67473f72e30e1f0874ec5ebe"
+        collection = get_collection(collection_id)
+        for item in collection.items:
+            print(item.item_id.split("/")[-1])
 
