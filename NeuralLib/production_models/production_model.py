@@ -44,6 +44,12 @@ class ProductionModel(arc.Architecture):
                     self.hugging_repo = item.item_id
                     break
 
+            if self.hugging_repo is None:
+                raise ValueError(
+                    f"❌ Model '{model_name}' not found in collection '{collection_id}'. "
+                    f"Please provide a valid Hugging Face repository (hugging_repo) containing the necessary files."
+                )
+
         # Ensure model files are cached locally
         self._download_and_cache_files()
 
@@ -52,8 +58,10 @@ class ProductionModel(arc.Architecture):
         self.hparams_path = os.path.join(self.local_dir, "hparams.yaml")
         self.training_info_path = os.path.join(self.local_dir, "training_info.json")
 
+        # Validate files self.weights_path, self.hparams_path, self.training_info_path
+        self._validate_model_files()
+
         self.training_info = self._load_json(self.training_info_path)
-        print(self.training_info)
 
         self.architecture_name = self.training_info['architecture']
         # Dynamically get the architecture class from biosignals_architectures
@@ -80,6 +88,18 @@ class ProductionModel(arc.Architecture):
                     f"Error: {e}")
         else:
             print(f"Using cached model files at: {self.local_dir}")
+
+    def _validate_model_files(self):
+        """Ensure the required model files are present in the downloaded repository."""
+        required_files = [self.weights_path, self.hparams_path, self.training_info_path]
+        missing_files = [f for f in required_files if not os.path.exists(f)]
+
+        if missing_files:
+            raise FileNotFoundError(
+                f"❌ The repository '{self.hugging_repo}' is missing the following required files:\n"
+                + "\n".join(missing_files)
+                + "\nEnsure that the repository contains the expected files before attempting to load the model."
+            )
 
     def _initialize_model(self):
         """Dynamically initialize the model with hyperparameters and load weights."""
@@ -168,13 +188,13 @@ class ProductionModel(arc.Architecture):
         with open(file_path, 'r') as f:
             return yaml.safe_load(f)
 
-    @staticmethod
-    def list_collection_models():
-        """
-        Lists all models in a given Hugging Face collection.
-        """
-        collection_id = "marianaagdias/neurallib-deep-learning-models-for-biosignals-processing-67473f72e30e1f0874ec5ebe"
-        collection = get_collection(collection_id)
-        for item in collection.items:
-            print(item.item_id.split("/")[-1])
+
+def list_production_models():
+    """
+    Lists all models in the NeuralLib Hugging Face collection.
+    """
+    collection_id = "marianaagdias/neurallib-deep-learning-models-for-biosignals-processing-67473f72e30e1f0874ec5ebe"
+    collection = get_collection(collection_id)
+    for item in collection.items:
+        print(item.item_id.split("/")[-1])
 
