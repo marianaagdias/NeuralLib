@@ -34,21 +34,22 @@ class ProductionModel(arc.Architecture):
         self.local_dir = os.path.join(HUGGING_MODELS_BASE_DIR, self.model_name)
 
         self.hugging_repo = hugging_repo
-        if self.hugging_repo is None:
-            # api = HfApi()
-            collection_id = "marianaagdias/neurallib-deep-learning-models-for-biosignals-processing-67473f72e30e1f0874ec5ebe"
-            collection = get_collection(collection_id)
-            # Find the model in the collection
-            for item in collection.items:
-                if item.item_id.split("/")[-1] == model_name:
-                    self.hugging_repo = item.item_id
-                    break
-
+        if not os.path.exists(self.local_dir):
             if self.hugging_repo is None:
-                raise ValueError(
-                    f"❌ Model '{model_name}' not found in collection '{collection_id}'. "
-                    f"Please provide a valid Hugging Face repository (hugging_repo) containing the necessary files."
-                )
+                # api = HfApi()
+                collection_id = "marianaagdias/neurallib-deep-learning-models-for-biosignals-processing-67473f72e30e1f0874ec5ebe"
+                collection = get_collection(collection_id)
+                # Find the model in the collection
+                for item in collection.items:
+                    if item.item_id.split("/")[-1] == model_name:
+                        self.hugging_repo = item.item_id
+                        break
+
+                if self.hugging_repo is None:
+                    raise ValueError(
+                        f"❌ Model '{model_name}' not found in collection '{collection_id}'. "
+                        f"Please provide a valid Hugging Face repository (hugging_repo) containing the necessary files."
+                    )
 
         # Ensure model files are cached locally
         self._download_and_cache_files()
@@ -79,7 +80,8 @@ class ProductionModel(arc.Architecture):
         if not os.path.exists(self.local_dir):
             try:
                 print(f"Downloading model files for {self.model_name} from Hugging Face...")
-                snapshot_download(repo_id=self.hugging_repo, local_dir=self.local_dir)
+                snapshot_download(repo_id=self.hugging_repo, local_dir=self.local_dir, max_workers=1,
+                                  resume_download=True)
                 print(f"Model files saved to: {self.local_dir}")
             except Exception as e:
                 raise RuntimeError(
@@ -168,7 +170,7 @@ class ProductionModel(arc.Architecture):
             output = self.model(X, lengths)  # go through the forward method of architecture
 
         # Apply post-processing if provided
-        processed_output = post_process_fn(output, **post_process_kwargs) if post_process_fn else output
+        processed_output = post_process_fn(output, **post_process_kwargs) if post_process_fn else output.cpu().numpy()
 
         return processed_output
 
