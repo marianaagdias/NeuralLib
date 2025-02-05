@@ -64,7 +64,6 @@ def get_weights_and_info_from_hugging(hugging_face_model, local_dir=None):
         local_dir = snapshot_download(repo_id=hugging_face_model)
 
     # Load weights
-    # TODO: checkar se faz sentido ter isto aqui
     weights_pth = os.path.join(local_dir, 'model_weights.pth')
     if not os.path.exists(weights_pth):
         raise FileNotFoundError(f"Weights file not found in Hugging Face model {hugging_face_model}")
@@ -209,7 +208,7 @@ class Architecture(pl.LightningModule):
 
     def train_from_scratch(self, path_x, path_y, patience, batch_size, epochs, gpu_id=None,
                            all_samples=False, samples=None, dataset_name=None, trained_for=None, classification=False,
-                           enable_tensorboard=False):
+                           enable_tensorboard=False, min_max_norm_sig=False):
         """
         :param path_x: Path to training data (features).
         :param path_y: Path to training labels (targets).
@@ -223,6 +222,8 @@ class Architecture(pl.LightningModule):
         :param trained_for: Task the model is being trained for.
         :param classification: Boolean flag for classification tasks.
         :param enable_tensorboard: Enable TensorBoard logging.
+        :param min_max_norm_sig: Boolean flag for performing minmax normalization to data signals from the dataset
+        before passing them to the model.
         """
 
         # Configure seed and device
@@ -250,11 +251,12 @@ class Architecture(pl.LightningModule):
         self.create_checkpoints_directory(retraining=False)
         print(f"Checkpoints directory created at {self.checkpoints_directory}")
 
+        seq2one = self.architecture_name.endswith('2one')
         # Datasets and Dataloaders
         train_dataset = DatasetSequence(path_x=path_x, path_y=path_y, part='train', all_samples=all_samples,
-                                        samples=samples)
+                                        samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig)
         val_dataset = DatasetSequence(path_x=path_x, path_y=path_y, part='val', all_samples=all_samples,
-                                      samples=samples)
+                                      samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig)
         train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
         val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
 
@@ -334,7 +336,7 @@ class Architecture(pl.LightningModule):
 
     def retrain(self, path_x, path_y, patience, batch_size, epochs, gpu_id=None, all_samples=False,
                 samples=None, dataset_name=None, trained_for=None, classification=False, enable_tensorboard=False,
-                checkpoints_directory=None, hugging_face_model=None):
+                checkpoints_directory=None, hugging_face_model=None, min_max_norm_sig=False):
 
         validate_training_context(retraining=True, checkpoints_directory=checkpoints_directory,
                                   hugging_face_model=hugging_face_model)
@@ -376,11 +378,12 @@ class Architecture(pl.LightningModule):
         # Create new checkpoints directory
         self.create_checkpoints_directory(retraining=True)
 
+        seq2one = self.architecture_name.endswith('2one')
         # Datasets and Dataloaders
         train_dataset = DatasetSequence(path_x=path_x, path_y=path_y, part='train', all_samples=all_samples,
-                                        samples=samples)
+                                        samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig)
         val_dataset = DatasetSequence(path_x=path_x, path_y=path_y, part='val', all_samples=all_samples,
-                                      samples=samples)
+                                      samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig)
         train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
         val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
         # collate_fn is necessary for handling signals with different lenghts (they are padded per batch)
@@ -462,7 +465,7 @@ class Architecture(pl.LightningModule):
         print(f"Weights saved as {final_weights_pth}")
 
     def test_on_test_set(self, path_x, path_y, all_samples=True, samples=None, checkpoints_dir=None, gpu_id=None,
-                         save_predictions=False, post_process_fn=None):
+                         save_predictions=False, post_process_fn=None, min_max_norm_sig=False):
         """
         Evaluate the model on a test set.
 
@@ -481,8 +484,9 @@ class Architecture(pl.LightningModule):
         map_location = torch.device(f'cuda:{device}' if isinstance(device, int) else device)
         print(f"Using device: {map_location}")
 
+        seq2one = self.architecture_name.endswith('2one')
         test_dataset = DatasetSequence(path_x=path_x, path_y=path_y, part='test', all_samples=all_samples,
-                                       samples=samples)
+                                       samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig)
         test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
         checkpoints_dir = checkpoints_dir or self.checkpoints_directory

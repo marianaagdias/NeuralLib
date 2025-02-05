@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 import json
+import sklearn.preprocessing as pp
 
 
 def configure_seed(seed):
@@ -43,7 +44,7 @@ def list_gpus():
 # é preciso handle o facto de estarmos a ver ponto a ponto do sinal e nao idx a idx do dataset
 def calculate_class_weights(dataset):
     '''
-    ALTERAR!
+    todo: ALTERAR!
     :param dataset:
     :return:
     '''
@@ -124,12 +125,27 @@ def collate_fn(batch):
 
 class DatasetSequence(Dataset):
 
-    def __init__(self, path_x, path_y, part='train', all_samples=False, samples=None, features=1, window_size=None, overlap=None):
-        self.dir_x = os.path.join(path_x, part)
+    def __init__(self, path_x, path_y, part='train', all_samples=False, samples=None, seq2one=False,
+                 min_max_norm_sig=False, window_size=None, overlap=None):
+        """
+        :param path_x: (str) Path to the directory containing input `.npy` files.
+        :param path_y: (str) Path to the directory containing output `.npy` files.
+        :param part: (str) Dataset partition to use, one of ['train', 'val', 'test']. Defaults to 'train'.
+        :param all_samples: (bool) If True, uses all available samples; otherwise, uses a limited number of samples.
+        :param samples: (int, optional) Number of samples to use if `all_samples=False`. Must be provided when `all_samples=False`.
+        :param seq2one: (bool) If True, the dataset is sequence-to-one (e.g., classification or regression with one output per sequence).
+                        If False, the dataset is sequence-to-sequence (e.g., denoising or forecasting tasks where output is a full sequence).
+        :param min_max_norm_sig: (bool) Whether to apply Min-Max normalization to input/output signals.
+                                 This is useful if input signals are not pre-processed beforehand.
+        :param window_size: (int, optional) Not yet implemented - Placeholder for defining windowing functionality.
+        :param overlap: (float, optional) Not yet implemented - Placeholder for defining overlap percentage when applying windowing.
+        """
+        self.dir_x = os.path.join(path_x, part)  # parts: train, val, test
         self.dir_y = os.path.join(path_y, part)
         self.all_samples = all_samples
         self.samples = samples
-        self.features = features  # still to be done
+        self.seq2one = seq2one
+        self.min_max_norm_sig = min_max_norm_sig
         self.window_size = window_size  # still to be done
         self.overlap = overlap  # still to be done
 
@@ -191,8 +207,30 @@ class DatasetSequence(Dataset):
         # print(f"x shape: {item_x.shape}")
         # print(f"y shape: {item_y.shape}")
 
-        item_x = item_x.reshape(-1, 1)  # Reshape to (seq_len, 1)
-        item_y = item_y.reshape(-1, 1)  # Reshape to (seq_len, 1)
+        # Ensure item_x has shape (seq_len, num_features)
+        if item_x.ndim == 1:
+            item_x = item_x.reshape(-1, 1)  # Convert (seq_len,) to (seq_len, 1)
+        elif item_x.ndim == 2 and item_x.shape[0] < item_x.shape[1]:
+            # Check only if it is 2D and appears to be (num_features, seq_len)
+            item_x = item_x.T  # Transpose to (seq_len, num_features)
+
+        # Handle item_y based on its shape
+        if self.seq2one:
+            if item_y.ndim == 0:
+                item_y = np.array([[item_y]])  # Convert scalar to (1,1)
+            elif item_y.ndim == 1:
+                item_y = item_y.reshape(1, -1)  # Convert (num_classes,) to (1, num_classes or num_features)
+        else:
+            if item_y.ndim == 1:
+                item_y = item_y.reshape(-1, 1)  # Convert (seq_len,) to (seq_len, 1)
+            elif item_y.ndim == 2 and item_y.shape[0] < item_y.shape[1]:
+                # Check only if it is 2D and appears to be (num_features, seq_len)
+                item_y = item_y.T  # Transpose to (seq_len, num_features)
+
+        if self.min_max_norm_sig:
+            item_x = pp.minmax_scale(item_x)
+            if not self.seq2one:
+                item_y = pp.minmax_scale(item_y)
 
         return torch.tensor(item_x).float(), torch.tensor(item_y).float()
 

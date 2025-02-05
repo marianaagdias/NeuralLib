@@ -112,7 +112,7 @@ def upload_production_model(local_dir, repo_name, token, model_name, description
         print(f"Repository '{repo_name}' already exists. Proceeding with upload...")
     except Exception:
         print(f"Repository '{repo_name}' does not exist. Creating it...")
-        api.create_repo(name=repo_name, token=token, exist_ok=True)
+        api.create_repo(repo_id=repo_name, token=token, exist_ok=True)
 
     # Upload all files
     upload_folder(folder_path=local_dir, repo_id=repo_name, token=token)

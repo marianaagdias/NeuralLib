@@ -2,6 +2,22 @@ import torch
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from NeuralLib.architectures import Architecture
+import inspect
+
+
+def list_architectures():
+    """
+    Lists all defined architecture classes in this module.
+    """
+    architectures = []
+
+    # Iterate over all attributes in the module
+    for name, obj in inspect.getmembers(__import__(__name__)):
+        # Check if the object is a class and if it is defined in this module
+        if inspect.isclass(obj) and obj.__module__ == __name__:
+            architectures.append(name)
+
+    return architectures
 
 
 # Sequence to sequence (direct correspondence between input and output) module
@@ -158,7 +174,7 @@ class GRUseq2one(Architecture):
             self.dropout_layers.append(nn.Dropout(p=self.dropout[i]))
             input_dim = self.hid_dim[i] * (2 if bidirectional else 1)
 
-        # Fully connected output layer
+        # Fully connected output layer - only applied to the last timestep of the sequence
         self.fc_out = nn.Linear(input_dim, self.num_classes if self.task == 'classification' else 1)
 
         # Set loss function based on task_type
@@ -291,13 +307,23 @@ class GRUEncoderDecoder(Architecture):
 
         return output
 
+    # @staticmethod
+    # def _concat_bidirectional_hidden(hidden):
+    #     """Concatenate forward and backward hidden states for bidirectional GRU."""
+    #     # The hidden state has shape [num_layers * num_directions, batch_size, hidden_dim]
+    #     forward_hidden = hidden[0:hidden.size(0):2]  # Extract forward hidden states
+    #     backward_hidden = hidden[1:hidden.size(0):2]  # Extract backward hidden states
+    #     return torch.cat((forward_hidden, backward_hidden), dim=2)  # Concatenate along hidden_dim
+
     @staticmethod
     def _concat_bidirectional_hidden(hidden):
         """Concatenate forward and backward hidden states for bidirectional GRU."""
-        # The hidden state has shape [num_layers * num_directions, batch_size, hidden_dim]
-        forward_hidden = hidden[0:hidden.size(0):2]  # Extract forward hidden states
-        backward_hidden = hidden[1:hidden.size(0):2]  # Extract backward hidden states
-        return torch.cat((forward_hidden, backward_hidden), dim=2)  # Concatenate along hidden_dim
+        num_layers = hidden.shape[0] // 2  # Half the number of layers due to bidirectionality
+        forward_hidden = hidden[0:num_layers]  # Extract forward hidden states
+        backward_hidden = hidden[num_layers:2 * num_layers]  # Extract backward hidden states
+
+        # Concatenate along hidden_dim to match the decoder's expectation
+        return torch.cat((forward_hidden, backward_hidden), dim=2)  # Shape: (num_layers, batch, hidden_dim * 2)
 
     def training_step(self, batch, batch_idx):
         src, tgt, src_lengths, tgt_lengths = batch
@@ -317,10 +343,23 @@ class GRUEncoderDecoder(Architecture):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=1e-5)
 
 
-class TransformerSeq2Seq(Architecture):
-    def __init__(self, model_name, n_features, d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward, dropout,
-                 learning_rate):
-        super(TransformerSeq2Seq, self).__init__(architecture_name="TransformerSeq2Seq")
+class Transformerseq2seq(Architecture):
+    def __init__(self, model_name, n_features, d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward,
+                 dropout, learning_rate, task='regression'):
+        """
+        Sequence-to-sequence model using Transformer encoders and decoders.
+        :param model_name: Name of the model instance, used for logging and checkpointing.
+        :param n_features: Number of input features per time step (i.e., signal channels).
+        :param d_model: Dimension of the transformer’s embedding space. Must match the expected input feature size for the transformer layers.
+        :param nhead: Number of attention heads in the multi-head attention layers.
+        :param num_encoder_layers: Number of stacked Transformer encoder layers.
+        :param num_decoder_layers: Number of stacked Transformer decoder layers.
+        :param dim_feedforward: Size of the hidden layer in the feedforward network within each transformer block.
+        :param dropout: Dropout probability applied to the transformer layers.
+        :param learning_rate: Learning rate for the optimizer during training.
+        :param task: regression or classification
+        """
+        super(Transformerseq2seq, self).__init__(architecture_name="Transformerseq2seq")
         self.model_name = model_name
         self.n_features = n_features
         self.d_model = d_model
@@ -330,26 +369,44 @@ class TransformerSeq2Seq(Architecture):
         self.dim_feedforward = dim_feedforward
         self.dropout = dropout
         self.learning_rate = learning_rate
+        self.task = task  # regression or classification
+
+        # Linear layer to project input features to d_model
+        self.input_projection = nn.Linear(n_features, d_model)
 
         # Transformer encoder and decoder
+        # Encoder Layer (self.encoder_layer): Defines a single Transformer encoder block.
         self.encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model, nhead=nhead, dim_feedforward=dim_feedforward, dropout=dropout)
+        # Encoder: Stacks multiple encoder layers to process the input sequence.
         self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_encoder_layers)
 
+        # Decoder Layer: Defines a single Transformer decoder block.
         self.decoder_layer = nn.TransformerDecoderLayer(
             d_model=d_model, nhead=nhead, dim_feedforward=dim_feedforward, dropout=dropout)
+        # Decoder: Stacks multiple decoder layers to transform the encoded sequence into an output sequence.
         self.decoder = nn.TransformerDecoder(self.decoder_layer, num_layers=num_decoder_layers)
 
-        # Fully connected layer to map output of the transformer to feature space
+        # Fully connected layer: Projects the output of the decoder to feature space (n_features).
         self.fc_out = nn.Linear(d_model, n_features)
 
-        # Loss function for sequence to sequence
-        self.criterion = nn.MSELoss()  # Assuming regression; change for classification tasks
+        # Set loss function based on task_type
+        if self.task == 'classification':
+            if self.multi_label or self.num_classes == 1:
+                self.criterion = nn.BCEWithLogitsLoss()
+            else:
+                self.criterion = nn.CrossEntropyLoss()
+        else:
+            self.criterion = nn.MSELoss()
 
         self.save_hyperparameters(ignore=["criterion"])
 
     def forward(self, src, tgt):
         # src and tgt shapes: [batch_size, seq_len, n_features]
+
+        # Project input to match d_model size
+        src = self.input_projection(src)
+        tgt = self.input_projection(tgt)
 
         # Transform input and target to [seq_len, batch_size, d_model]
         src = src.permute(1, 0, 2)
@@ -385,10 +442,10 @@ class TransformerSeq2Seq(Architecture):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
-class TransformerSeq2One(Architecture):  # Encoder-only Transformer
+class Transformerseq2one(Architecture):  # Encoder-only Transformer
     def __init__(self, model_name, n_features, d_model, nhead, num_encoder_layers, dim_feedforward, dropout, learning_rate,
                  num_classes=1):
-        super(TransformerSeq2One, self).__init__(architecture_name="TransformerSeq2One")
+        super(Transformerseq2one, self).__init__(architecture_name="Transformerseq2one")
         self.model_name = model_name
         self.n_features = n_features
         self.d_model = d_model

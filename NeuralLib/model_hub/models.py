@@ -1,4 +1,4 @@
-from NeuralLib.production_models.base import ProductionModel
+from NeuralLib.model_hub.production_model import ProductionModel
 from NeuralLib.architectures import post_process_peaks_binary
 
 

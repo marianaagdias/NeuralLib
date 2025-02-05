@@ -15,7 +15,7 @@ def post_process_peaks_binary(output, threshold=0.5, filter_peaks=False):
     :param output: Raw model output (logits or probabilities).
     :param threshold: Threshold for classifying a peak.
     :param filter_peaks: Whether to apply non-maximum suppression for closely spaced peaks.
-    :return: Indices of detected peaks.
+    :return: numpy array with indices of detected peaks.
     """
     output_probs = torch.sigmoid(output).squeeze()
     output_binary = (output_probs > threshold).float()

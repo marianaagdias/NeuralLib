@@ -3,7 +3,7 @@ import numpy as np
 import json
 import random
 from NeuralLib.config import ECG_DATA_PATH, PEAKS_DATA_PATH, DATASETS_GIB01
-from NeuralLib.data_preprocessing.signal_preprocessing import resampling, split_signal
+from data_preprocessing.signal_preprocessing import resampling, split_signal
 import sklearn.preprocessing as pp
 
 

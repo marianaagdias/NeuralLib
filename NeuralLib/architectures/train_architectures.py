@@ -63,6 +63,7 @@ def train_architecture_from_scratch(architecture_name, architecture_params, trai
         trained_for=train_params['trained_for'],
         gpu_id=train_params.get('gpu_id', None),
         enable_tensorboard=train_params['enable_tensorboard'],
+        min_max_norm_sig=train_params.get('min_max_norm_sig', False)
     )
 
     print("Training completed successfully.")
@@ -111,6 +112,7 @@ def retrain_architecture(architecture_name, train_params, checkpoints_directory=
         checkpoints_directory=checkpoints_directory,
         hugging_face_model=hugging_face_model,
         enable_tensorboard=train_params['enable_tensorboard'],
+        min_max_norm_sig=train_params.get('min_max_norm_sig', False),
     )
 
     print("Retraining completed successfully.")
