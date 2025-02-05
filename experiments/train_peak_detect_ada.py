@@ -1,8 +1,6 @@
-import os.path
-
 import NeuralLib.architectures as arc
 from NeuralLib.config import RESULTS_PEAK_DETECTION
-from NeuralLib.data_preprocessing.gib01 import X, Y_BIN
+from data_preprocessing import X, Y_BIN
 from NeuralLib.architectures import post_process_peaks_binary
 
 # Define architecture and training parameters
