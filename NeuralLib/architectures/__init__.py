@@ -7,13 +7,13 @@ from .base import (
     validate_training_context
 )
 from .biosignals_architectures import (
+    list_architectures,
     GRUseq2seq,
-    # GRUseq2seqCustom,
     GRUseq2one,
     GRUEncoderDecoder,
     TransformerEncoderDecoder,
-    TransformerSeq2Seq,
-    TransformerSeq2One,
+    Transformerseq2seq,
+    Transformerseq2one,
 )
 from .train_architectures import (
     get_valid_architectures,
@@ -32,8 +32,8 @@ __all__ = [
     "GRUseq2one",
     "GRUEncoderDecoder",
     "TransformerEncoderDecoder",
-    "TransformerSeq2Seq",
-    "TransformerSeq2One",
+    "Transformerseq2seq",
+    "Transformerseq2one",
     "get_valid_architectures",
     "validate_architecture_name",
     "train_architecture_from_scratch",
@@ -44,5 +44,6 @@ __all__ = [
     "get_weights_and_info_from_hugging",
     "get_weights_and_info_from_checkpoints",
     "validate_training_context",
-    "post_process_peaks_binary"
+    "post_process_peaks_binary",
+    "list_architectures",
 ]
