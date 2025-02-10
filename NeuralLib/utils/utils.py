@@ -153,7 +153,7 @@ def validate_dataset(self):
         if sample_x.shape[0] == self.n_features and sample_x.shape[0] < sample_x.shape[1]:  # Likely transposed
             print(
                 f"Warning: Input shape seems transposed {sample_x.shape}. It will be corrected but consider storing "
-                f"data as (sequence length, {self.n_features})."
+                f"data as (sequence length, {self.n_features}) for efficiency."
                 )
         elif sample_x.shape[0] != self.n_features and sample_x.shape[1] != self.n_features:
             raise ValueError(f"Invalid input shape {sample_x.shape}. Expected (sequence length, {self.n_features}).")
@@ -180,7 +180,8 @@ def validate_dataset(self):
         else:  # Regression (MSELoss)
             if sample_y.shape == (self.n_features,):  # (num_features,) → Expected (1, num_features)
                 print(f"Warning: Output shape {sample_y.shape} should be (1, {self.n_features}). "
-                      "It will be automatically reshaped, but consider storing it correctly.")
+                      "It will be automatically converted, but consider storing data in the correct format for "
+                      "efficiency.")
             elif sample_y.shape != (1, self.n_features):
                 raise ValueError(
                     f"Invalid output shape {sample_y.shape}. Expected (1, {self.n_features}) for seq2one regression.")
@@ -189,28 +190,34 @@ def validate_dataset(self):
             if self.multi_label:  # Multi-label classification (BCEWithLogitsLoss) [seq_len, num_classes]
                 if sample_y.ndim == 1 and self.num_classes == 1:  # (seq_len,) → Expected (seq_len, 1)
                     print(f"Warning: Output shape {sample_y.shape} should be (sequence length,1). "
-                          "Consider storing it correctly for efficiency.")
+                          "It will be automatically converted, but consider storing data in the correct format for "
+                          "efficiency.")
                 elif sample_y.ndim != 2 or sample_y.shape[1] != self.num_classes:
                     raise ValueError(
-                        f"Invalid output shape {sample_y.shape}. Expected (sequence length, {self.num_classes}) for seq2seq multi-label classification."
+                        f"Invalid output shape {sample_y.shape}. Expected (sequence length, {self.num_classes}) for "
+                        f"seq2seq multi-label classification. "
                     )
             else:  # Multiclass classification (CrossEntropyLoss)
                 if sample_y.ndim == 2 and sample_y.shape[1] == 1:  # (seq_len, 1) → Expected (seq_len,)
                     print(f"Warning: Output shape {sample_y.shape} should be (sequence length,). "
-                          "It will be automatically squeezed, but consider storing it correctly."
+                          "It will be automatically converted, but consider storing data in the correct format for "
+                          "efficiency. "
                           )
                 elif sample_y.ndim != 1:
                     raise ValueError(
-                        f"Invalid output shape {sample_y.shape}. Expected (sequence length,) for seq2seq multiclass classification."
+                        f"Invalid output shape {sample_y.shape}. Expected (sequence length,) for seq2seq multiclass "
+                        f"classification. "
                     )
         else:  # Regression (MSELoss)
             if sample_y.ndim == 1 and sample_y.shape[0] > 1:  # (seq_len,) → Expected (seq_len, num_features)
                 print(f"Warning: Output shape {sample_y.shape} should be (sequence length, {self.n_features}). "
-                      "It will be automatically expanded, but consider storing it correctly."
+                      "It will be automatically converted, but consider storing data in the correct format for "
+                      "efficiency. "
                       )
             elif sample_y.ndim != 2:
                 raise ValueError(
-                    f"Invalid output shape {sample_y.shape}. Expected (sequence length, {self.n_features}) for seq2seq regression."
+                    f"Invalid output shape {sample_y.shape}. Expected (sequence length, {self.n_features}) for "
+                    f"seq2seq regression. "
                 )
 
     print("✅ Dataset validation passed.")

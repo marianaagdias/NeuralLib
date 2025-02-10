@@ -49,7 +49,8 @@ print("Testing the best model on the test set...")
 # 3.1. Load architecture parameters from the hparams.yaml file
 architecture_params = arc.get_hparams_from_checkpoints(best_dir)
 # 3.2 Initialize the model using the loaded parameters
-model = arc.GRUseq2seq(**architecture_params)
+architecture_class = getattr(arc, architecture_name, None)
+model = architecture_class(**architecture_params)
 
 predictions, avg_loss = model.test_on_test_set(
     path_x=train_params["path_x"],

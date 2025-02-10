@@ -262,10 +262,9 @@ class Architecture(pl.LightningModule):
                                       samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig,
                                       classification=classification, multi_label=self.multi_label,
                                       n_features=self.n_features, num_classes=self.num_classes)
-        print('DatasetSequence')
+
         train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
         val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
-        print('DatasetLoader')
 
         # Calculate class weights based on the training dataset -- only for classification problems
         # if classification:
@@ -601,10 +600,10 @@ class Architecture(pl.LightningModule):
         model.eval()
 
         X = X.unsqueeze(0).to(device)  # Add batch dimension
-        lengths = [X.size(1)]  # Sequence length for batch size 1
+        length = torch.tensor([X.size(1)], dtype=torch.int64, device='cpu')  # Sequence length for batch size 1
 
         with torch.no_grad():
-            output = self(X, lengths)
+            output = self(X, length)
 
         # Apply softmax **only for multiclass classification** when storing predictions
         if self.task == 'classification' and not self.multi_label:
