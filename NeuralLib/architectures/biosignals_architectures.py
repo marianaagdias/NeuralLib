@@ -4,6 +4,9 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from NeuralLib.architectures import Architecture
 import inspect
 
+# TODO MEGA IMPORTANTE: ACRESCENTAR A CADA ARQUITECTURA VERIFICAÇÃO DOS INPUTS (TASK TEM QUE SER OU CLASSIFICATION OR REGRESSION ETCETC)
+# todo 2: acrescentar nos transformers a possibilidade de ser multiabel a classificação!
+
 
 def list_architectures():
     """
@@ -23,7 +26,7 @@ def list_architectures():
 # Sequence to sequence (direct correspondence between input and output) module
 class GRUseq2seq(Architecture):
     def __init__(self, model_name, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,
-                 task='classification', num_classes=1, multi_label=False):
+                 task='classification', num_classes=1, multi_label=False, fc_out_bool=True):
         """
         :param n_features: Number of input features per time step.
         :param hid_dim: Hidden dimension(s) of the GRU layers (int or vector of int - in the last case, the length
@@ -45,8 +48,14 @@ class GRUseq2seq(Architecture):
         self.learning_rate = learning_rate
         self.bidirectional = bidirectional
         self.task = task  # classification or regression
-        self.num_classes = num_classes if task == 'classification' else 'NA'  # only used if the task is classification
-        self.multi_label = multi_label
+        self.num_classes = num_classes if task == 'classification' else None  # only used if the task is classification
+        self.multi_label = True if self.num_classes == 1 else multi_label
+        self.fc_out_bool = True if task == 'classification' else fc_out_bool  # fc_out is mandatory if task is classification
+
+        if self.task not in ["classification", "regression"]:
+            raise ValueError(f"Invalid task '{self.task}'. Task must be either 'classification' or 'regression'.")
+        if self.task == "regression" and self.multi_label:
+            raise ValueError("Multi-label classification cannot be set to True when task is 'regression'.")
 
         # Ensure hid_dim matches n_layers
         if len(self.hid_dim) != n_layers:
@@ -69,7 +78,8 @@ class GRUseq2seq(Architecture):
             input_dim = self.hid_dim[i] * (2 if bidirectional else 1)
 
         # Fully connected output layer
-        self.fc_out = nn.Linear(input_dim, self.num_classes if self.task == 'classification' else self.n_features)
+        if self.fc_out_bool:
+            self.fc_out = nn.Linear(input_dim, self.num_classes if self.task == 'classification' else self.n_features)
 
         # Set loss function based on task_type
         if self.task == 'classification':
@@ -101,12 +111,11 @@ class GRUseq2seq(Architecture):
 
         # Unpack to apply the fully connected
         output, _ = pad_packed_sequence(packed_x, batch_first=True)
-        logits = self.fc_out(output)
+        if self.fc_out_bool:
+            logits = self.fc_out(output)
+        else:
+            logits = output
 
-        # Only apply softmax for multi-class classification during inference
-        if self.task == 'classification' and not self.multi_label and self.num_classes > 1:
-            return torch.softmax(logits, dim=-1)
-        # Else (num_classes==1 or multi-label is True)
         return logits
 
     def training_step(self, batch, batch_idx):
@@ -131,7 +140,7 @@ class GRUseq2seq(Architecture):
 
 class GRUseq2one(Architecture):
     def __init__(self, model_name, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,
-                 task='classification', num_classes=1, multi_label=False):
+                 task='classification', num_classes=1, multi_label=False, fc_out_bool=True):
         """
         :param n_features: Number of input features per time step.
         :param hid_dim: Hidden dimension(s) of the GRU layers (int or vector of int - in the latter case, the length
@@ -153,8 +162,14 @@ class GRUseq2one(Architecture):
         self.learning_rate = learning_rate
         self.bidirectional = bidirectional
         self.task = task  # classification or regression
-        self.num_classes = num_classes  # only used if the task is classification (if binary, num_classes=1).
-        self.multi_label = multi_label
+        self.num_classes = num_classes if task == 'classification' else None  # only used if the task is classification
+        self.multi_label = True if self.num_classes == 1 else multi_label
+        self.fc_out_bool = True if task == 'classification' else fc_out_bool  # fc_out is mandatory if task is classification
+
+        if self.task not in ["classification", "regression"]:
+            raise ValueError(f"Invalid task '{self.task}'. Task must be either 'classification' or 'regression'.")
+        if self.task == "regression" and self.multi_label:
+            raise ValueError("Multi-label classification cannot be set to True when task is 'regression'.")
 
         # Ensure hid_dim and dropout match n_layers
         if len(self.hid_dim) != n_layers:
@@ -175,7 +190,8 @@ class GRUseq2one(Architecture):
             input_dim = self.hid_dim[i] * (2 if bidirectional else 1)
 
         # Fully connected output layer - only applied to the last timestep of the sequence
-        self.fc_out = nn.Linear(input_dim, self.num_classes if self.task == 'classification' else 1)
+        if fc_out_bool:
+            self.fc_out = nn.Linear(input_dim, self.num_classes if self.task == 'classification' else self.n_features)
 
         # Set loss function based on task_type
         if task == 'classification':
@@ -208,11 +224,14 @@ class GRUseq2one(Architecture):
         last_outputs = output[torch.arange(output.size(0)), lengths - 1]
 
         # Pass through the fully connected layer
-        logits = self.fc_out(last_outputs)
+        if self.fc_out_bool:
+            logits = self.fc_out(last_outputs)
+        else:
+            logits = last_outputs
 
         # Only apply softmax for multi-class classification during inference
-        if self.task == 'classification' and not self.multi_label and self.num_classes > 1:
-            return torch.softmax(logits, dim=-1)
+        # if self.task == 'classification' and not self.multi_label and self.num_classes > 1:
+        #     return torch.softmax(logits, dim=-1)
 
         # Else (num_classes==1 or multi-label is True), return raw logits
         return logits
@@ -239,7 +258,7 @@ class GRUseq2one(Architecture):
 
 class GRUEncoderDecoder(Architecture):
     def __init__(self, model_name, n_features, enc_hid_dim, dec_hid_dim, enc_layers, dec_layers, dropout, learning_rate,
-                 bidirectional=False):
+                 bidirectional=False, fc_out_bool=True):
 
         super(GRUEncoderDecoder, self).__init__(architecture_name="GRUEncoderDecoder")
         self.model_name = model_name
@@ -252,6 +271,10 @@ class GRUEncoderDecoder(Architecture):
         self.learning_rate = learning_rate
         self.bidirectional = bidirectional
         self.d = 2 if bidirectional else 1  # Double the hidden size if the encoder is bidirectional
+        self.task = 'regression'
+        self.num_classes = None
+        self.multi_label = False
+        self.fc_out_bool = fc_out_bool  # fc_out is mandatory if task is classification
 
         # Encoder GRU
         self.encoder = nn.GRU(input_size=n_features, hidden_size=enc_hid_dim, num_layers=enc_layers,
@@ -262,7 +285,8 @@ class GRUEncoderDecoder(Architecture):
                               batch_first=True, dropout=dropout)
 
         # Fully connected output layer to map hidden states to output features
-        self.fc_out = nn.Linear(dec_hid_dim, n_features)
+        if self.fc_out_bool:
+            self.fc_out = nn.Linear(dec_hid_dim, n_features)
 
         self.criterion = nn.MSELoss()  # For regression tasks
 
@@ -303,7 +327,10 @@ class GRUEncoderDecoder(Architecture):
         dec_output, _ = pad_packed_sequence(packed_dec_output, batch_first=True)
 
         # Final fully connected layer to map decoder hidden states to predicted output
-        output = self.fc_out(dec_output)
+        if self.fc_out_bool:
+            output = self.fc_out(dec_output)
+        else:
+            output = dec_output
 
         return output
 
@@ -345,7 +372,7 @@ class GRUEncoderDecoder(Architecture):
 
 class Transformerseq2seq(Architecture):
     def __init__(self, model_name, n_features, d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward,
-                 dropout, learning_rate, task='regression'):
+                 dropout, learning_rate, task='regression', num_classes=1, multi_label=False):
         """
         Sequence-to-sequence model using Transformer encoders and decoders.
         :param model_name: Name of the model instance, used for logging and checkpointing.
@@ -370,6 +397,13 @@ class Transformerseq2seq(Architecture):
         self.dropout = dropout
         self.learning_rate = learning_rate
         self.task = task  # regression or classification
+        self.num_classes = num_classes if task == 'classification' else None  # only used if the task is classification
+        self.multi_label = True if self.num_classes == 1 else multi_label
+
+        if self.task not in ["classification", "regression"]:
+            raise ValueError(f"Invalid task '{self.task}'. Task must be either 'classification' or 'regression'.")
+        if self.task == "regression" and self.multi_label:
+            raise ValueError("Multi-label classification cannot be set to True when task is 'regression'.")
 
         # Linear layer to project input features to d_model
         self.input_projection = nn.Linear(n_features, d_model)
@@ -444,7 +478,7 @@ class Transformerseq2seq(Architecture):
 
 class Transformerseq2one(Architecture):  # Encoder-only Transformer
     def __init__(self, model_name, n_features, d_model, nhead, num_encoder_layers, dim_feedforward, dropout, learning_rate,
-                 num_classes=1):
+                 num_classes=1, task='classification', multi_label=False):
         super(Transformerseq2one, self).__init__(architecture_name="Transformerseq2one")
         self.model_name = model_name
         self.n_features = n_features
@@ -455,6 +489,14 @@ class Transformerseq2one(Architecture):  # Encoder-only Transformer
         self.dropout = dropout
         self.learning_rate = learning_rate
         self.num_classes = num_classes
+        self.task = task
+        self.num_classes = num_classes if task == 'classification' else None  # only used if the task is classification
+        self.multi_label = True if self.num_classes == 1 else multi_label
+
+        if self.task not in ["classification", "regression"]:
+            raise ValueError(f"Invalid task '{self.task}'. Task must be either 'classification' or 'regression'.")
+        if self.task == "regression" and self.multi_label:
+            raise ValueError("Multi-label classification cannot be set to True when task is 'regression'.")
 
         # Transformer encoder
         self.encoder_layer = nn.TransformerEncoderLayer(
@@ -469,6 +511,7 @@ class Transformerseq2one(Architecture):  # Encoder-only Transformer
             self.criterion = nn.MSELoss()  # For regression
         else:
             self.criterion = nn.CrossEntropyLoss()  # For classification
+            # TODO: FALTA A MULTILABEL
 
         self.save_hyperparameters(ignore=["criterion"])
 
@@ -517,6 +560,9 @@ class TransformerEncoderDecoder(Architecture):
         self.dim_feedforward = dim_feedforward
         self.dropout = dropout
         self.learning_rate = learning_rate
+        self.task = 'regression'
+        self.num_classes = None
+        self.multi_label = False
 
         # Transformer encoder
         self.encoder_layer = nn.TransformerEncoderLayer(

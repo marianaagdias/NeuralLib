@@ -169,6 +169,10 @@ class ProductionModel(arc.Architecture):
         with torch.no_grad():
             output = self.model(X, lengths)  # go through the forward method of architecture
 
+        # Apply softmax **only for multiclass classification** when storing predictions
+        if self.task == 'classification' and not self.multi_label:
+            output = torch.nn.functional.softmax(output, dim=-1)
+
         # Apply post-processing if provided
         processed_output = post_process_fn(output, **post_process_kwargs) if post_process_fn else output.cpu().numpy()
 

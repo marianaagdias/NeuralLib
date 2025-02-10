@@ -207,7 +207,7 @@ class Architecture(pl.LightningModule):
                 json.dump(training_info, f, indent=4)
 
     def train_from_scratch(self, path_x, path_y, patience, batch_size, epochs, gpu_id=None,
-                           all_samples=False, samples=None, dataset_name=None, trained_for=None, classification=False,
+                           all_samples=False, samples=None, dataset_name=None, trained_for=None,
                            enable_tensorboard=False, min_max_norm_sig=False):
         """
         :param path_x: Path to training data (features).
@@ -252,13 +252,20 @@ class Architecture(pl.LightningModule):
         print(f"Checkpoints directory created at {self.checkpoints_directory}")
 
         seq2one = self.architecture_name.endswith('2one')
+        classification = self.task == 'classification'
         # Datasets and Dataloaders
         train_dataset = DatasetSequence(path_x=path_x, path_y=path_y, part='train', all_samples=all_samples,
-                                        samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig)
+                                        samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig,
+                                        classification=classification, multi_label=self.multi_label,
+                                        n_features=self.n_features, num_classes=self.num_classes)
         val_dataset = DatasetSequence(path_x=path_x, path_y=path_y, part='val', all_samples=all_samples,
-                                      samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig)
+                                      samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig,
+                                      classification=classification, multi_label=self.multi_label,
+                                      n_features=self.n_features, num_classes=self.num_classes)
+        print('DatasetSequence')
         train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
         val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+        print('DatasetLoader')
 
         # Calculate class weights based on the training dataset -- only for classification problems
         # if classification:
@@ -305,6 +312,7 @@ class Architecture(pl.LightningModule):
         )
 
         # Train the model
+        print('Starting training...')
         trainer.fit(model, train_dataloader, val_dataloader)
 
         # Save training information
@@ -335,7 +343,7 @@ class Architecture(pl.LightningModule):
         print(f"Weights saved as {final_weights_pth}")
 
     def retrain(self, path_x, path_y, patience, batch_size, epochs, gpu_id=None, all_samples=False,
-                samples=None, dataset_name=None, trained_for=None, classification=False, enable_tensorboard=False,
+                samples=None, dataset_name=None, trained_for=None, enable_tensorboard=False,
                 checkpoints_directory=None, hugging_face_model=None, min_max_norm_sig=False):
 
         validate_training_context(retraining=True, checkpoints_directory=checkpoints_directory,
@@ -379,11 +387,16 @@ class Architecture(pl.LightningModule):
         self.create_checkpoints_directory(retraining=True)
 
         seq2one = self.architecture_name.endswith('2one')
+        classification = self.task == 'classification'
         # Datasets and Dataloaders
         train_dataset = DatasetSequence(path_x=path_x, path_y=path_y, part='train', all_samples=all_samples,
-                                        samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig)
+                                        samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig,
+                                        classification=classification, multi_label=self.multi_label,
+                                        n_features=self.n_features, num_classes=self.num_classes)
         val_dataset = DatasetSequence(path_x=path_x, path_y=path_y, part='val', all_samples=all_samples,
-                                      samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig)
+                                      samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig,
+                                      classification=classification, multi_label=self.multi_label,
+                                      n_features=self.n_features, num_classes=self.num_classes)
         train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
         val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
         # collate_fn is necessary for handling signals with different lenghts (they are padded per batch)
@@ -485,8 +498,11 @@ class Architecture(pl.LightningModule):
         print(f"Using device: {map_location}")
 
         seq2one = self.architecture_name.endswith('2one')
+        classification = self.task == 'classification'
         test_dataset = DatasetSequence(path_x=path_x, path_y=path_y, part='test', all_samples=all_samples,
-                                       samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig)
+                                       samples=samples, seq2one=seq2one, min_max_norm_sig=min_max_norm_sig,
+                                       classification=classification, multi_label=self.multi_label,
+                                       n_features=self.n_features, num_classes=self.num_classes)
         test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
         checkpoints_dir = checkpoints_dir or self.checkpoints_directory
@@ -526,6 +542,10 @@ class Architecture(pl.LightningModule):
                 output = self(x, length)
                 loss = self.criterion(output, y)
                 total_loss += loss.item()
+
+                # Apply softmax **only for multiclass classification** when storing predictions
+                if self.task == 'classification' and not self.multi_label:
+                    output = torch.nn.functional.softmax(output, dim=-1)
 
                 # Apply post-processing if provided
                 processed_output = post_process_fn(output) if post_process_fn else output
@@ -585,6 +605,10 @@ class Architecture(pl.LightningModule):
 
         with torch.no_grad():
             output = self(X, lengths)
+
+        # Apply softmax **only for multiclass classification** when storing predictions
+        if self.task == 'classification' and not self.multi_label:
+            output = torch.nn.functional.softmax(output, dim=-1)
 
         # Apply post-processing if provided
         processed_output = post_process_fn(output) if post_process_fn else output
