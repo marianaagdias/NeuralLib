@@ -19,6 +19,7 @@ archi_params_options = {
     "learning_rate": [0.001],
     "bidirectional": [True],
     "task": ["classification"],
+    "multi_label": [True],
     "num_classes": [1],
 }
 

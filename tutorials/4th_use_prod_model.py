@@ -4,6 +4,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+# TODO: fazer este tutorial com o denoiser para fazer referencia ao paper (no notebook)
+
 # path_sig = os.path.join(DATASETS_PTB_DENOISER, 'x', 'test')
 # path_clean_sig = os.path.join(DATASETS_PTB_DENOISER, 'y', 'test')
 # i = 0

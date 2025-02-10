@@ -36,19 +36,7 @@ train_params_ = {
 # Step 3: Initialize and train the GRUseq2seq model
 print("Training from scratch...")
 model = GRUseq2seq(**arch_params)
-model.train_from_scratch(
-    path_x=train_params_['path_x'],
-    path_y=train_params_['path_y'],
-    patience=train_params_['patience'],
-    batch_size=train_params_['batch_size'],
-    epochs=train_params_['epochs'],
-    gpu_id=train_params_['gpu_id'],
-    all_samples=train_params_['all_samples'],
-    samples=train_params_['samples'],
-    dataset_name=train_params_['dataset_name'],
-    trained_for=train_params_['trained_for'],
-    enable_tensorboard=train_params_['enable_tensorboard']
-)
+model.train_from_scratch(**train_params_)
 
 # Save checkpoints directory after initial training
 checkpoints_dir = model.checkpoints_directory
