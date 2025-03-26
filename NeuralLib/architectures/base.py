@@ -400,13 +400,6 @@ class Architecture(pl.LightningModule):
         val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
         # collate_fn is necessary for handling signals with different lenghts (they are padded per batch)
 
-        # todo:  class weights
-        # Calculate class weights based on the training dataset -- only for classification problems
-        # if classification:
-        #     class_weights = calculate_class_weights(train_dataset)
-        # Convert class_weights to the GPU
-        # class_weights = class_weights.to(device=device)
-
         # Define the model callbacks
         arch_string = f"{self.hid_dim}hid_{self.n_layers}l_lr{self.learning_rate}_drop{self.dropout}_retraining"
         checkpoint_callback = ModelCheckpoint(
