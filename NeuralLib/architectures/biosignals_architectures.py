@@ -4,10 +4,6 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from NeuralLib.architectures import Architecture
 import inspect
 
-# TODO MEGA IMPORTANTE: ACRESCENTAR A CADA ARQUITECTURA VERIFICAÇÃO DOS INPUTS (TASK TEM QUE SER OU CLASSIFICATION OR
-#  REGRESSION ETCETC)
-# todo 2: acrescentar nos transformers a possibilidade de ser multilabel a classificação!
-
 
 def list_architectures():
     """
@@ -24,6 +20,8 @@ def list_architectures():
     return architectures
 
 
+# TODO: ACRESCENTAR A CADA ARQUITECTURA VERIFICAÇÃO DOS INPUTS (TASK TEM QUE SER CLASSIFICATION OU REGRESSION, ETCETC)
+# TODO 2: acrescentar nos transformers a possibilidade de ser multilabel a classificação!
 # Sequence to sequence (direct correspondence between input and output) module
 class GRUseq2seq(Architecture):
     def __init__(self, model_name, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,

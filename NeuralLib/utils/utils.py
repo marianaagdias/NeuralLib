@@ -44,7 +44,7 @@ def list_gpus():
 # é preciso handle o facto de estarmos a ver ponto a ponto do sinal e nao idx a idx do dataset
 def calculate_class_weights(dataset):
     '''
-    todo: ALTERAR!
+    todo: ALTERAR class weights
     :param dataset:
     :return:
     '''
