@@ -4,19 +4,16 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-# TODO: fazer este tutorial com o denoiser para fazer referencia ao paper (no notebook)
-
-# path_sig = os.path.join(DATASETS_PTB_DENOISER, 'x', 'test')
-# path_clean_sig = os.path.join(DATASETS_PTB_DENOISER, 'y', 'test')
-# i = 0
-# file = os.listdir(path_sig)[i]
-# test_signal = np.load(os.path.join(path_sig, file))
-# idx = np.load(os.path.join(path_clean_sig, file))
+path_sig = os.path.join(DATASETS_PTB_DENOISER, 'x', 'test')
+path_clean_sig = os.path.join(DATASETS_PTB_DENOISER, 'y', 'test')
+i = 0
+file = os.listdir(path_sig)[i]
+test_signal = np.load(os.path.join(path_sig, file))
+clean_signal = np.load(os.path.join(path_clean_sig, file))
 
 mh.list_production_models()
 
 denoiser = mh.ProductionModel(model_name="ECGDenoiserNL")
-# and then:
 predicted_signal = denoiser.predict(
     X=test_signal,
     gpu_id=None

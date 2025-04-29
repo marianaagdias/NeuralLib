@@ -4,8 +4,9 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from NeuralLib.architectures import Architecture
 import inspect
 
-# TODO MEGA IMPORTANTE: ACRESCENTAR A CADA ARQUITECTURA VERIFICAÇÃO DOS INPUTS (TASK TEM QUE SER OU CLASSIFICATION OR REGRESSION ETCETC)
-# todo 2: acrescentar nos transformers a possibilidade de ser multiabel a classificação!
+# TODO MEGA IMPORTANTE: ACRESCENTAR A CADA ARQUITECTURA VERIFICAÇÃO DOS INPUTS (TASK TEM QUE SER OU CLASSIFICATION OR
+#  REGRESSION ETCETC)
+# todo 2: acrescentar nos transformers a possibilidade de ser multilabel a classificação!
 
 
 def list_architectures():

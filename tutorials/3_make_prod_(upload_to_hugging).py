@@ -12,8 +12,7 @@ huggingface-cli login
 and then paste the token (below)
 """
 
-# TODO: retirar o token daqui (este é meu)
-token = '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'
+token = '<personal_token>'
 description = "GRU-based model for ECG peak detection"
 upload_production_model(local_dir=r'C:\Users\Catia Bastos\dev\trained_models\ECGPeakDetector',
                         repo_name='marianaagdias/ECGPeakDetector',

@@ -25,6 +25,9 @@ from .train_architectures import (
 from .post_process_fn import (
     post_process_peaks_binary
 )
+from .upload_to_hugging import (
+    upload_production_model
+)
 
 __all__ = [
     "Architecture",
@@ -46,4 +49,5 @@ __all__ = [
     "validate_training_context",
     "post_process_peaks_binary",
     "list_architectures",
+    "upload_production_model"
 ]
