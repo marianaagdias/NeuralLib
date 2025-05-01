@@ -2,7 +2,6 @@ from scipy.signal import resample
 
 
 def resampling(signal, target_sampling_rate, original_sampling_rate=1440):
-    # gib01: original_sampling_rate=1440
     num_samples = int(len(signal) * (target_sampling_rate / original_sampling_rate))
     resampled_signal = resample(signal, num_samples)
     print(f"Resampled signal to {num_samples} samples")
