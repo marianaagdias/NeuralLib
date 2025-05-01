@@ -19,9 +19,9 @@ Explore the [`tutorials/`](./tutorials) folder for several hands-on examples dem
 ## 📖 Documentation
 
 Comprehensive documentation is available here:  
-👉 [NeuralLib Documentation](https://novabiosignals.github.io/NeuralLib-docs/)
+[NeuralLib Documentation](https://novabiosignals.github.io/NeuralLib-docs/)
 
 ## Pre-trained Models
 
-Check out the collection of pre-trained models on Hugging Face:  
-👉 [NeuralLib DL Models for Biosignals](https://huggingface.co/collections/marianaagdias/neurallibdeep-learning-models-for-biosignals-processing-67473f72e30e1f0874ec5ebe)
+Collection of pre-trained models on Hugging Face:  
+[NeuralLib DL Models for Biosignals](https://huggingface.co/collections/marianaagdias/neurallibdeep-learning-models-for-biosignals-processing-67473f72e30e1f0874ec5ebe)
