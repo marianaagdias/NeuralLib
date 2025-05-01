@@ -19,7 +19,7 @@ Explore the [`tutorials/`](./tutorials) folder for several hands-on examples dem
 ## 📖 Documentation
 
 Comprehensive documentation is available here:  
-👉 [NeuralLib Documentation](https://marianaagdias.github.io/NeuralLib-docs/)
+👉 [NeuralLib Documentation](https://novabiosignals.github.io/NeuralLib-docs/)
 
 ## Pre-trained Models
 
