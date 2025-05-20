@@ -7,7 +7,8 @@ The core concept of `NeuralLib` revolves around creating, training, and managing
 The library supports:
 
 - Training and testing `Architectures` from scratch for specific biosignals processing tasks.
-- Adding tested models to hugging face repositories to create `ProductionModels` and share them with the community for public usage.
+- Using trained models (`ProductionModels`) to process biosignals.
+- Adding tested models to hugging face repositories to create new `ProductionModels` and share them with the community for public usage.
 - Extracting trained components from production models using `TLFactory`.
 - Combining, freezing, or further fine-tuning pre-trained components to train`TLModels`.
 
@@ -24,4 +25,4 @@ Comprehensive documentation is available here:
 ## Pre-trained Models
 
 Collection of pre-trained models on Hugging Face:  
-[NeuralLib DL Models for Biosignals](https://huggingface.co/collections/marianaagdias/neurallibdeep-learning-models-for-biosignals-processing-67473f72e30e1f0874ec5ebe)
+[NeuralLib DL Models for Biosignals](https://huggingface.co/collections/novabiosignals/neurallib-deep-learning-models-for-biosignals-processing-6813ee129bc1bba8210b6948)
