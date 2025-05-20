@@ -37,7 +37,7 @@ class ProductionModel(arc.Architecture):
         if not os.path.exists(self.local_dir):
             if self.hugging_repo is None:
                 # api = HfApi()
-                collection_id = "marianaagdias/neurallib-deep-learning-models-for-biosignals-processing-67473f72e30e1f0874ec5ebe"
+                collection_id = "https://huggingface.co/collections/novabiosignals/neurallib-deep-learning-models-for-biosignals-processing-6813ee129bc1bba8210b6948"
                 collection = get_collection(collection_id)
                 # Find the model in the collection
                 for item in collection.items:
@@ -107,6 +107,8 @@ class ProductionModel(arc.Architecture):
         """Dynamically initialize the model with hyperparameters and load weights."""
         # Load hyperparameters
         self.hyperparams = self._load_yaml(self.hparams_path)
+        self.task = self.hyperparams['task']
+        self.multi_label = self.hyperparams['multi_label']
 
         # Dynamically initialize the architecture
         self.model = self.architecture_class(**self.hyperparams)
@@ -199,7 +201,7 @@ def list_production_models():
     """
     Lists all models in the NeuralLib Hugging Face collection.
     """
-    collection_id = "marianaagdias/neurallib-deep-learning-models-for-biosignals-processing-67473f72e30e1f0874ec5ebe"
+    collection_id = "https://huggingface.co/collections/novabiosignals/neurallib-deep-learning-models-for-biosignals-processing-6813ee129bc1bba8210b6948"  # "marianaagdias/neurallib-deep-learning-models-for-biosignals-processing-67473f72e30e1f0874ec5ebe"
     collection = get_collection(collection_id)
     for item in collection.items:
         print(item.item_id.split("/")[-1])
