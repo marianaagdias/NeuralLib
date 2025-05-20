@@ -26,6 +26,6 @@ def split_signal(signal, sampling_rate, segment_duration):
         end_idx = start_idx + segment_length
         segments.append(signal[start_idx:end_idx])
 
-    # Here, I'm ignoring any remaining samples that don't fit into a full segment - change?
+    # discards the remaining samples that don't fit into a full segment
 
     return segments
