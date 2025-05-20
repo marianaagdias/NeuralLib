@@ -8,7 +8,7 @@ Y_BIN = os.path.join(DATASETS_GIB01, 'y_bin')
 
 # Step 1: Define architecture parameters
 arch_params = {
-    'n_features': 1,
+    'n_features': 1,  # number of channels / features of the input
     'hid_dim': 16,
     'n_layers': 2,
     'dropout': 0.3,
@@ -16,6 +16,7 @@ arch_params = {
     'bidirectional': True,
     'task': 'classification',
     'num_classes': 1,
+    'multi_label': True,
 }
 
 # Step 2: Define training parameters
