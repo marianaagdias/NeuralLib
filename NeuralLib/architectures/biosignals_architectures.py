@@ -3,6 +3,7 @@ from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from NeuralLib.architectures import Architecture
 import inspect
+import math
 
 
 def list_architectures():
@@ -27,7 +28,7 @@ class GRUseq2seq(Architecture):
     def __init__(self, model_name, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,
                  task='classification', num_classes=1, multi_label=False, fc_out_bool=True):
         """
-        :param n_features: Number of input features per time step.
+        :param n_features: Number of input channels/features per time step.
         :param hid_dim: Hidden dimension(s) of the GRU layers (int or vector of int - in the last case, the length
         should match the number of hidden layers (n_layers)).
         :param n_layers: Number of GRU layers.
@@ -141,7 +142,7 @@ class GRUseq2one(Architecture):
     def __init__(self, model_name, n_features, hid_dim, n_layers, dropout, learning_rate, bidirectional=False,
                  task='classification', num_classes=1, multi_label=False, fc_out_bool=True):
         """
-        :param n_features: Number of input features per time step.
+        :param n_features: Number of input channels/features per time step.
         :param hid_dim: Hidden dimension(s) of the GRU layers (int or vector of int - in the latter case, the length
         should match the number of hidden layers (n_layers)).
         :param n_layers: Number of GRU layers.
@@ -255,11 +256,11 @@ class GRUseq2one(Architecture):
         return [optimizer], [scheduler] if scheduler else [optimizer]
 
 
-class GRUEncoderDecoder(Architecture):
+class GRUED(Architecture):
     def __init__(self, model_name, n_features, enc_hid_dim, dec_hid_dim, enc_layers, dec_layers, dropout, learning_rate,
                  bidirectional=False, fc_out_bool=True):
 
-        super(GRUEncoderDecoder, self).__init__(architecture_name="GRUEncoderDecoder")
+        super(GRUED, self).__init__(architecture_name="GRUED")
         self.model_name = model_name
         self.n_features = n_features
         self.enc_hid_dim = enc_hid_dim
@@ -369,13 +370,40 @@ class GRUEncoderDecoder(Architecture):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=1e-5)
 
 
+class FixedPositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=5000):
+        super().__init__()
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(1)  # [max_len, 1, d_model]
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        # x shape: [seq_len, batch_size, d_model]
+        x = x + self.pe[:x.size(0)]
+        return x
+
+
+class LearnedPositionalEncoding(nn.Module):
+    def __init__(self, seq_len, d_model):
+        super().__init__()
+        self.pe = nn.Parameter(torch.randn(seq_len, 1, d_model))
+
+    def forward(self, x):
+        # x shape: [seq_len, batch_size, d_model]
+        return x + self.pe[:x.size(0)]
+
+
 class Transformerseq2seq(Architecture):
     def __init__(self, model_name, n_features, d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward,
                  dropout, learning_rate, task='regression', num_classes=1, multi_label=False):
         """
         Sequence-to-sequence model using Transformer encoders and decoders.
         :param model_name: Name of the model instance, used for logging and checkpointing.
-        :param n_features: Number of input features per time step (i.e., signal channels).
+        :param n_features: Number of input channels/features per time step (i.e., signal channels).
         :param d_model: Dimension of the transformer’s embedding space. Must match the expected input feature size for the transformer layers.
         :param nhead: Number of attention heads in the multi-head attention layers.
         :param num_encoder_layers: Number of stacked Transformer encoder layers.
@@ -407,6 +435,10 @@ class Transformerseq2seq(Architecture):
         # Linear layer to project input features to d_model
         self.input_projection = nn.Linear(n_features, d_model)
 
+        # Positional encoding
+        self.pos_encoder = FixedPositionalEncoding(d_model=d_model)
+        # self.pos_encoder = LearnedPositionalEncoding(seq_len=some_max_seq_len, d_model=d_model)
+
         # Transformer encoder and decoder
         # Encoder Layer (self.encoder_layer): Defines a single Transformer encoder block.
         self.encoder_layer = nn.TransformerEncoderLayer(
@@ -435,15 +467,23 @@ class Transformerseq2seq(Architecture):
         self.save_hyperparameters(ignore=["criterion"])
 
     def forward(self, src, tgt):
-        # src and tgt shapes: [batch_size, seq_len, n_features]
+        # src and tgt original shapes: [batch_size, seq_len, n_features]
 
         # Project input to match d_model size
         src = self.input_projection(src)
         tgt = self.input_projection(tgt)
+        # [batch_size, seq_len, n_features] -> [batch_size, seq_len, d_model]
+        # maps your feature at each time step (e.g., ECG amplitude) to a d_model-dimensional vector (ex, 64 dimensions)
 
-        # Transform input and target to [seq_len, batch_size, d_model]
+        # Transform input and target shapes to [seq_len, batch_size, d_model]
         src = src.permute(1, 0, 2)
         tgt = tgt.permute(1, 0, 2)
+
+        # Add positional encoding (shape remains the same: [seq_len, batch_size, d_model])
+        src = self.pos_encoder(src)
+        tgt = self.pos_encoder(tgt)
+        # The transformer is permutation-invariant (it doesn’t know the order of time steps unless explicited)
+        # The positional encoder adds a position-dependent vector to each time step embedding
 
         # Encode the source sequence
         memory = self.encoder(src)
@@ -546,10 +586,10 @@ class Transformerseq2one(Architecture):  # Encoder-only Transformer
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
-class TransformerEncoderDecoder(Architecture):
+class TransformerED(Architecture):
     def __init__(self, model_name, n_features, d_model, nhead, num_encoder_layers, num_decoder_layers, dim_feedforward, dropout,
                  learning_rate):
-        super(TransformerEncoderDecoder, self).__init__(architecture_name="TransformerEncoderDecoder")
+        super(TransformerED, self).__init__(architecture_name="TransformerED")
         self.model_name = model_name
         self.n_features = n_features
         self.d_model = d_model
