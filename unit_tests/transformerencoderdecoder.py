@@ -1,11 +1,11 @@
 import torch
 import pytest
-from NeuralLib.architectures.biosignals_architectures import TransformerEncoderDecoder
+from NeuralLib.architectures.biosignals_architectures import TransformerED
 
 
 @pytest.fixture
 def model():
-    return TransformerEncoderDecoder(
+    return TransformerED(
         model_name="test_transformerencdec",
         n_features=5,
         d_model=16,
