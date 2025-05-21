@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 from NeuralLib.utils import configure_seed, configure_device, DatasetSequence, collate_fn, LossPlotCallback, \
     save_predictions_with_filename
 from NeuralLib.config import RESULTS_BASE_DIR
+from calflops import calculate_flops
 
 
 def get_weights_and_info_from_checkpoints(prev_checkpoints_dir):
@@ -168,6 +169,40 @@ class Architecture(pl.LightningModule):
         self.checkpoints_directory = checkpoints_directory
         return checkpoints_directory
 
+    def efficiency_metrics(self):
+        """
+        Compute efficiency metrics for the model:
+
+        - Normalized FLOPs: Number of floating-point operations per signal, per channel, per timestep.
+          This reflects the computational cost of processing a single point in a biosignal.
+
+        - Params: Total number of trainable parameters in the model, reflecting memory footprint
+          and capacity, independent of input shape.
+
+        Returns:
+            tuple:
+                - flops_per_sample (float): Normalized FLOPs per signal × channel × timestep.
+                - params (int): Total number of trainable parameters in the model.
+        """
+        # Define a reference input shape — arbitrary but consistent, since normalization removes dependency
+        batch_size = 256
+        channels = 1
+        seq_len = 1000
+        input_shape = (batch_size, channels, seq_len)
+
+        # Estimate FLOPs, MACs (not returned here), and parameter count
+        flops, _, params = calculate_flops(
+            model=self,
+            input_shape=input_shape,
+            output_as_string=False,
+            output_precision=4
+        )
+
+        # Normalize FLOPs to express efficiency per sample (per signal × channel × timestep)
+        flops_per_sample = flops / (batch_size * channels * seq_len)
+
+        return flops_per_sample, params
+
     def save_training_information(self, trainer, optimizer, train_dataset_name, trained_for, val_loss,
                                   total_training_time, gpu_model, retraining, prev_training_history=None):
         """ Save information about the current training process and append previous training info to the history if
@@ -184,6 +219,8 @@ class Architecture(pl.LightningModule):
             'validation_loss': val_loss,
             'training_time': total_training_time,
             'retraining': retraining,
+            'efficiency_flops': self.efficiency_metrics()[0],
+            'efficiency_params': self.efficiency_metrics()[1],
         }
         # Set the new training info as the main training_info
         self.training_info = current_training_info
