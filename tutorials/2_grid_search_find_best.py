@@ -1,11 +1,11 @@
 import NeuralLib.architectures as arc
 import torch
-from NeuralLib.config import DATASETS_GIB01
+from NeuralLib.config import DATASETS_ECG_G
 import os
 
 # Data paths
-X = os.path.join(DATASETS_GIB01, 'x')
-Y_BIN = os.path.join(DATASETS_GIB01, 'y_bin')
+X = os.path.join(DATASETS_ECG_G, 'x')
+Y_BIN = os.path.join(DATASETS_ECG_G, 'y_bin')
 
 # Step 1: Define architecture and training parameters
 architecture_name = 'GRUseq2seq'

@@ -1,11 +1,11 @@
 from NeuralLib.model_hub import TLModel, TLFactory, list_production_models
 from NeuralLib.architectures import GRUseq2seq
-from NeuralLib.config import DATASETS_GIB01
+from NeuralLib.config import DATASETS_ECG_G  # peaks dataset
 import os
 
 # Data paths
-X = os.path.join(DATASETS_GIB01, 'x')
-Y_BIN = os.path.join(DATASETS_GIB01, 'y_bin')
+X = os.path.join(DATASETS_ECG_G, 'x')
+Y_BIN = os.path.join(DATASETS_ECG_G, 'y_bin')
 
 # Initialize factory
 factory = TLFactory()

@@ -18,7 +18,7 @@ RESULTS_BASE_DIR = os.path.join(DEV_BASE_DIR, "results")
 HUGGING_MODELS_BASE_DIR = os.path.join(DEV_BASE_DIR, "hugging_prodmodels")
 
 # Directories for saving processed datasets
-DATASETS_GIB01 = os.path.join(DATA_BASE_DIR, "gib01_ecg", "datasets")
+DATASETS_ECG_G = os.path.join(DATA_BASE_DIR, "gib01_ecg", "datasets")
 DATASETS_PTB_DENOISER = os.path.join(DATA_BASE_DIR, "ptb-xl", "dataset_denoiser")
 DATASETS_JESSICA = os.path.join(DATA_BASE_DIR, "jessica")
 DATASETS_TESTS = os.path.join(DATA_BASE_DIR, "tests")
