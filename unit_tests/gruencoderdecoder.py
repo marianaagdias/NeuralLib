@@ -1,12 +1,12 @@
 import torch
 import pytest
-from NeuralLib.architectures.biosignals_architectures import GRUEncoderDecoder
+from NeuralLib.architectures.biosignals_architectures import GRUED
 
 
 @pytest.fixture
 def model():
     """Fixture to initialize a test instance of the GRUEncoderDecoder model."""
-    return GRUEncoderDecoder(
+    return GRUED(
         model_name="test_model",
         n_features=5,
         enc_hid_dim=10,  # Encoder hidden size
